@@ -1,0 +1,7 @@
+{% macro icon(name, cls='') -%}
+<svg class="icon {{ cls }}" aria-hidden="true" focusable="false"><use href="{{ url_for('static', filename='img/icons.svg') }}#{{ name }}"></use></svg>
+{%- endmacro %}
+
+{% macro field_error(errors, name) -%}
+{% if errors.get(name) %}<p class="field-error" id="err-{{ name }}" role="alert">{{ t(errors[name][0], **errors[name][1]) }}</p>{% endif %}
+{%- endmacro %}

@@ -1,0 +1,16 @@
+{% extends 'admin/base.html' %}
+{% block title %}Déploiement{% endblock %}
+{% block content %}
+<h1>Diagnostic de déploiement</h1>
+<p class="muted">Aucun secret n'est affiché. Ouvrez cette page via l'adresse Netlify, puis via l'adresse Render, et comparez.</p>
+<div class="table-wrap"><table>
+  <tbody>{% for k, v in info.items() %}<tr><th scope="row">{{ k }}</th><td><code>{{ v }}</code></td></tr>{% endfor %}</tbody>
+</table></div>
+<div class="panel">
+  <p><strong>À vérifier :</strong></p>
+  <ul>
+    <li>Schéma vu = <code>https</code> et hôte = votre domaine Netlify (sinon ajustez <code>TRUST_PROXY</code>).</li>
+    <li>L'adresse vue ne doit pas être celle d'un serveur Netlify/Render identique pour tous les visiteurs : sinon tous partagent la même limite anti-spam.</li>
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% from '_macros.html' import icon %}<!doctype html>
+<html lang="{{ lang }}" dir="{{ text_dir }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ setting('club_name') }} — {{ t('meta.title_suffix') }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ t('meta.description') }}{% endblock %}">
+  <meta name="theme-color" content="#0b1f3a">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body class="lang-{{ lang }}">
+  <a class="skip-link" href="#main">{{ t('a11y.skip') }}</a>
+
+  <header class="site-header" id="top">
+    <div class="container header-inner">
+      <a class="brand" href="{{ url_for('public.home') }}">
+        <img src="{{ logo_url }}" alt="{{ t('a11y.logo') }}" width="44" height="44">
+        <span class="brand-name">{{ setting('club_name') }}</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="{{ t('nav.menu') }}">
+        {{ icon('menu') }}
+      </button>
+
+      <nav id="site-nav" class="site-nav" aria-label="{{ t('nav.main') }}">
+        <ul class="nav-links">
+          <li><a href="{{ url_for('public.home') }}">{{ t('nav.home') }}</a></li>
+          <li><a href="{{ url_for('public.home') }}#about">{{ t('nav.about') }}</a></li>
+          <li><a href="{{ url_for('public.home') }}#activities">{{ t('nav.activities') }}</a></li>
+          <li><a href="{{ url_for('public.register') }}">{{ t('nav.register') }}</a></li>
+          <li><a href="{{ url_for('public.home') }}#contact">{{ t('nav.contact') }}</a></li>
+        </ul>
+        <div class="nav-tools">
+          <div class="lang-switch" role="group" aria-label="{{ t('nav.language') }}">
+            {% for code in LANGS %}
+            <a href="{{ url_for('public.set_language', code=code, next=request.path) }}"
+               lang="{{ code }}" hreflang="{{ code }}"
+               {% if code == lang %}aria-current="true" class="active"{% endif %}>{{ NATIVE_NAMES[code] }}</a>
+            {% endfor %}
+          </div>
+          <a class="btn btn-accent btn-sm" href="{{ url_for('public.register') }}">{{ t('nav.cta') }}</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="container flash-wrap">
+    {% for category, message in messages %}
+    <div class="flash flash-{{ category }}" role="status">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="container footer-grid">
+      <div>
+        <div class="brand brand-footer">
+          <img src="{{ logo_url }}" alt="" width="40" height="40">
+          <span class="brand-name">{{ setting('club_name') }}</span>
+        </div>
+        <p class="footer-text">{{ t('footer.tagline') }}</p>
+        <p class="footer-text">{{ setting('location') }}</p>
+      </div>
+      <div>
+        <h2 class="footer-title">{{ t('contact.kicker') }}</h2>
+        <ul class="footer-list">
+          <li>{{ icon('mail') }}<a href="mailto:{{ setting('email') }}"><bdi dir="ltr">{{ setting('email') }}</bdi></a></li>
+          <li>{{ icon('phone') }}<a href="tel:{{ setting('phone')|replace(' ', '') }}"><bdi dir="ltr">{{ setting('phone') }}</bdi></a></li>
+          <li>{{ icon('pin') }}<span>{{ setting('location') }}</span></li>
+        </ul>
+        {% if SOCIALS %}
+        <ul class="social-list" aria-label="{{ t('contact.social') }}">
+          {% for name, url in SOCIALS %}
+          <li><a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ name|capitalize }}</a></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      <div>
+        <h2 class="footer-title">{{ t('footer.links') }}</h2>
+        <ul class="footer-list">
+          <li><a href="{{ url_for('public.register') }}">{{ t('nav.register') }}</a></li>
+          <li><a href="{{ url_for('public.privacy') }}">{{ t('footer.privacy') }}</a></li>
+          <li><a href="{{ url_for('public.legal') }}">{{ t('footer.legal') }}</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>© {{ setting('club_name') }} — {{ t('footer.rights') }}</span>
+    </div>
+  </footer>
+</body>
+</html>

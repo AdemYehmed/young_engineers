@@ -1,0 +1,15 @@
+[build]
+  publish = "."
+
+# Les fichiers de /static sont servis directement par Netlify (CDN) ;
+# tout le reste est transmis à l'application Flask sur Render.
+[[redirects]]
+  from = "/static/*"
+  to = "/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "https://young-engineers-api.onrender.com/:splat"
+  status = 200
+  force = true

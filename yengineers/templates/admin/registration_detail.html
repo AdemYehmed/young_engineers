@@ -1,0 +1,51 @@
+{% extends 'admin/base.html' %}
+{% block title %}Préinscription {{ r['reference'] }}{% endblock %}
+{% block content %}
+{% set v = values or {} %}
+{% set cur_interests = v.get('interests') if values else (r['interests'] or '').split(',') %}
+<div class="panel-head">
+  <h1>Préinscription <bdi dir="ltr">{{ r['reference'] }}</bdi></h1>
+  <a href="{{ url_for('admin.registrations_list') }}">← Retour à la liste</a>
+</div>
+<p class="muted">Reçue le {{ r['created_at']|localdt }} · Consentement enregistré le {{ r['consent_at']|localdt }} · Dernière modification {{ r['updated_at']|localdt }}</p>
+
+{% if errors %}
+<div class="flash flash-error" role="alert"><strong>Veuillez corriger :</strong>
+  <ul>{% for name, err in errors.items() %}<li>{{ errmsg(err) }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<form class="panel form-grid" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div><label for="parent_name">Parent ou tuteur</label>
+    <input id="parent_name" name="parent_name" required maxlength="100" value="{{ v.get('parent_name', r['parent_name']) }}"></div>
+  <div><label for="youth_first_name">Prénom du jeune</label>
+    <input id="youth_first_name" name="youth_first_name" required maxlength="60" value="{{ v.get('youth_first_name', r['youth_first_name']) }}"></div>
+  <div><label for="age">Âge</label>
+    <select id="age" name="age">{% for a in range(13, 19) %}
+      <option value="{{ a }}" {{ 'selected' if (v.get('age', r['age']))|string == a|string }}>{{ a }}</option>{% endfor %}</select></div>
+  <div><label for="phone">Téléphone</label>
+    <input id="phone" name="phone" required dir="ltr" maxlength="30" value="{{ v.get('phone', r['phone']) }}"></div>
+  <div><label for="email">Email</label>
+    <input id="email" name="email" type="email" required dir="ltr" maxlength="254" value="{{ v.get('email', r['email']) }}"></div>
+  <div><label for="preferred_language">Langue préférée</label>
+    <select id="preferred_language" name="preferred_language">{% for k in LANG_CHOICES %}
+      <option value="{{ k }}" {{ 'selected' if v.get('preferred_language', r['preferred_language']) == k }}>{{ LANG_LABELS[k] }}</option>{% endfor %}</select></div>
+  <div><label for="experience_level">Niveau</label>
+    <select id="experience_level" name="experience_level">{% for k in LEVELS %}
+      <option value="{{ k }}" {{ 'selected' if v.get('experience_level', r['experience_level']) == k }}>{{ LEVEL_LABELS[k] }}</option>{% endfor %}</select></div>
+  <div><label for="status">Statut</label>
+    <select id="status" name="status">{% for k in STATUSES %}
+      <option value="{{ k }}" {{ 'selected' if v.get('status', r['status']) == k }}>{{ STATUS_LABELS[k] }}</option>{% endfor %}</select></div>
+  <fieldset class="wide"><legend>Centres d'intérêt</legend>
+    {% for k in INTERESTS %}<label class="inline"><input type="checkbox" name="interests" value="{{ k }}" {{ 'checked' if k in cur_interests }}> {{ INTEREST_LABELS[k] }}</label>{% endfor %}
+  </fieldset>
+  <div class="wide"><label for="message">Message du parent</label>
+    <textarea id="message" name="message" rows="3" maxlength="1000">{{ v.get('message', r['message']) }}</textarea></div>
+  <div class="wide"><label for="admin_note">Note administrative (privée)</label>
+    <textarea id="admin_note" name="admin_note" rows="3" maxlength="2000">{{ v.get('admin_note', r['admin_note']) }}</textarea></div>
+  <div class="wide actions">
+    <button class="btn btn-primary" type="submit">Enregistrer</button>
+    <a class="btn btn-danger" href="{{ url_for('admin.registration_delete', reg_id=r['id']) }}">Supprimer…</a>
+  </div>
+</form>
+{% endblock %}

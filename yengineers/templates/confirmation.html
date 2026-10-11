@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import icon %}
+{% block title %}{{ t('done.title') }} — {{ setting('club_name') }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container narrow center confirm">
+    <span class="confirm-icon">{{ icon('check') }}</span>
+    {% if done.duplicate %}
+    <h1 class="h2">{{ t('done.duplicate_title') }}</h1>
+    <p class="lead dark">{{ t('done.duplicate_text') }}</p>
+    {% else %}
+    <h1 class="h2">{{ t('done.title') }}</h1>
+    <p class="lead dark">{{ t('done.text') }}</p>
+    {% if done.reference %}
+    <p class="ref-label">{{ t('done.reference') }}</p>
+    <p class="ref"><bdi dir="ltr">{{ done.reference }}</bdi></p>
+    <p class="muted">{{ t('done.keep') }}</p>
+    {% endif %}
+    {% endif %}
+    <p class="fine dark">{{ t('done.not_final') }}</p>
+    <a class="btn btn-accent" href="{{ url_for('public.home') }}">{{ t('form.back_home') }}</a>
+  </div>
+</section>
+{% endblock %}

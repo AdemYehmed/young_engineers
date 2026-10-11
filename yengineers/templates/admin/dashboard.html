@@ -1,0 +1,59 @@
+{% extends 'admin/base.html' %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<h1>Tableau de bord</h1>
+<div class="stat-grid">
+  <div class="stat"><span class="stat-n">{{ stats.total }}</span><span>Préinscriptions au total</span></div>
+  <div class="stat"><span class="stat-n">{{ stats.recent }}</span><span>Reçues ces 7 derniers jours</span></div>
+  <div class="stat"><span class="stat-n">{{ stats.by_status['new'] }}</span><span>À traiter (nouveau)</span></div>
+  <div class="stat"><span class="stat-n">{{ stats.by_status['contacted'] }}</span><span>Contactés</span></div>
+</div>
+
+<div class="two-col">
+  <section class="panel">
+    <h2>Répartition par âge</h2>
+    {% set maxv = (stats.by_age.values()|max) or 1 %}
+    <ul class="bars">
+      {% for age, n in stats.by_age.items() %}
+      <li><span class="bar-label">{{ age }} ans</span><progress max="{{ maxv }}" value="{{ n }}" aria-label="{{ age }} ans"></progress><span class="bar-n">{{ n }}</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+  <section class="panel">
+    <h2>Répartition par centre d'intérêt</h2>
+    {% set maxi = (stats.by_interest.values()|max) or 1 %}
+    <ul class="bars">
+      {% for key, n in stats.by_interest.items() %}
+      <li><span class="bar-label">{{ INTEREST_LABELS[key] }}</span><progress max="{{ maxi }}" value="{{ n }}" aria-label="{{ INTEREST_LABELS[key] }}"></progress><span class="bar-n">{{ n }}</span></li>
+      {% endfor %}
+    </ul>
+    <p class="muted small">Un jeune peut choisir plusieurs centres d'intérêt.</p>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Dernières préinscriptions</h2>
+    <a href="{{ url_for('admin.registrations_list') }}">Tout voir →</a>
+  </div>
+  {% if stats.latest %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Date</th><th>Référence</th><th>Jeune</th><th>Âge</th><th>Parent</th><th>Statut</th></tr></thead>
+    <tbody>
+    {% for r in stats.latest %}
+    <tr>
+      <td>{{ r['created_at']|localdt }}</td>
+      <td><a href="{{ url_for('admin.registration_detail', reg_id=r['id']) }}">{{ r['reference'] }}</a></td>
+      <td>{{ r['youth_first_name'] }}</td><td>{{ r['age'] }}</td><td>{{ r['parent_name'] }}</td>
+      <td><span class="tag tag-{{ r['status'] }}">{{ STATUS_LABELS[r['status']] }}</span></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Aucune préinscription reçue pour le moment.</p>
+  {% endif %}
+</section>
+{% endblock %}

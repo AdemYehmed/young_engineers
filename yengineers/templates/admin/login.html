@@ -1,0 +1,17 @@
+{% extends 'admin/base.html' %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<div class="login-box">
+  <h1>Administration</h1>
+  <p class="muted">Espace réservé aux responsables du club.</p>
+  {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="username">Identifiant</label>
+    <input id="username" name="username" type="text" required maxlength="64" autocomplete="username" autofocus>
+    <label for="password">Mot de passe</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+    <button class="btn btn-primary" type="submit">Se connecter</button>
+  </form>
+</div>
+{% endblock %}

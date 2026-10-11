@@ -1,0 +1,27 @@
+{% extends 'admin/base.html' %}
+{% block title %}Sauvegardes{% endblock %}
+{% block content %}
+<h1>Sauvegardes de la base</h1>
+{% if postgres %}
+<div class="panel">
+  <p>La base est PostgreSQL : les sauvegardes ne se font pas depuis cette page.</p>
+  <ul>
+    <li>Depuis votre ordinateur : <code>python scripts/backup_db.py</code> avec la variable <code>DATABASE_URL</code> (nécessite <code>pg_dump</code>).</li>
+    <li>Ou depuis les sauvegardes de votre hébergeur de base (plan payant chez Render, ou Neon).</li>
+    <li>Export rapide des préinscriptions : bouton CSV de la page « Préinscriptions ».</li>
+  </ul>
+</div>
+{% else %}
+<p class="muted">Une sauvegarde est aussi créée automatiquement avant toute suppression d'une préinscription. La restauration se fait en ligne de commande (voir le README) : <code>python scripts/restore_db.py</code>.</p>
+<form method="post" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-primary" type="submit">Créer une sauvegarde maintenant</button>
+</form>
+{% if items %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Fichier</th><th>Taille</th><th>Date</th></tr></thead>
+  <tbody>{% for b in items %}<tr><td>{{ b.name }}</td><td>{{ (b.size / 1024)|round(1) }} Ko</td><td>{{ b.modified.strftime('%d/%m/%Y %H:%M') }} UTC</td></tr>{% endfor %}</tbody>
+</table></div>
+{% else %}<p class="panel muted">Aucune sauvegarde pour le moment.</p>{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'admin/base.html' %}
+{% block title %}Contenu du site{% endblock %}
+{% block content %}
+<h1>Contenu du site</h1>
+<p class="muted">Modifiez les textes affichés sur le site public. Les textes traduits doivent être renseignés en arabe, français et anglais pour éviter tout mélange de langues.</p>
+<form method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  {% for group_title, fields in groups %}
+  <section class="panel">
+    <h2>{{ group_title }}</h2>
+    <div class="form-grid">
+    {% for key, label, kind, translatable in fields %}
+      {% if translatable %}
+        {% for lg, lname, d in (('ar', 'Arabe', 'rtl'), ('fr', 'Français', 'ltr'), ('en', 'Anglais', 'ltr')) %}
+        {% set name = key ~ '_' ~ lg %}
+        {% set current = posted.get(name, '') if posted else values.get(name, '') %}
+        <div class="wide"><label for="{{ name }}">{{ label }} — {{ lname }}</label>
+          {% if kind == 'textarea' %}<textarea id="{{ name }}" name="{{ name }}" dir="{{ d }}" rows="3" maxlength="2000">{{ current }}</textarea>
+          {% else %}<input id="{{ name }}" name="{{ name }}" dir="{{ d }}" maxlength="2000" value="{{ current }}">{% endif %}</div>
+        {% endfor %}
+      {% else %}
+        {% set current = posted.get(key, '') if posted else values.get(key, '') %}
+        <div><label for="{{ key }}">{{ label }}</label>
+          {% if kind == 'textarea' %}<textarea id="{{ key }}" name="{{ key }}" rows="3" maxlength="2000">{{ current }}</textarea>
+          {% else %}<input id="{{ key }}" name="{{ key }}" type="{{ 'url' if kind == 'url' else ('email' if kind == 'email' else ('number' if kind == 'int' else 'text')) }}"
+            {% if kind in ('url', 'email') %}dir="ltr"{% endif %} maxlength="2000" value="{{ current }}"
+            {% if kind == 'url' %}placeholder="https://"{% endif %}>{% endif %}</div>
+      {% endif %}
+    {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+  <section class="panel">
+    <h2>Logo</h2>
+    <p class="muted">Sans envoi, le logo provisoire du dossier <code>yengineers/static/img/logo.svg</code> est utilisé.</p>
+    {% if values.get('logo_file') %}<p><img class="thumb" src="{{ url_for('public.media', filename=values['logo_file']) }}" alt="">
+      <label class="inline"><input type="checkbox" name="remove_logo" value="1"> Revenir au logo provisoire</label></p>{% endif %}
+    <label for="logo">Nouveau logo (PNG, JPG, WEBP — {{ config['MAX_UPLOAD_MB'] }} Mo max)</label>
+    <input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+  </section>
+
+  <div class="actions"><button class="btn btn-primary" type="submit">Enregistrer les paramètres</button></div>
+</form>
+{% endblock %}

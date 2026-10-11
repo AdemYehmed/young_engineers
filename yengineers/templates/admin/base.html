@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Administration{% endblock %} — Young Engineers</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+</head>
+<body>
+{% if g.admin %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('admin.dashboard') }}">Young Engineers <small>Administration</small></a>
+  <nav class="topnav" aria-label="Navigation d'administration">
+    <a href="{{ url_for('admin.dashboard') }}" {% if request.endpoint == 'admin.dashboard' %}aria-current="page"{% endif %}>Tableau de bord</a>
+    <a href="{{ url_for('admin.registrations_list') }}" {% if request.endpoint and request.endpoint.startswith('admin.registration') %}aria-current="page"{% endif %}>Préinscriptions</a>
+    <a href="{{ url_for('admin.activities_list') }}" {% if request.endpoint and request.endpoint.startswith('admin.activit') %}aria-current="page"{% endif %}>Activités</a>
+    <a href="{{ url_for('admin.faqs_list') }}" {% if request.endpoint and request.endpoint.startswith('admin.faq') %}aria-current="page"{% endif %}>FAQ</a>
+    <a href="{{ url_for('admin.settings_page') }}" {% if request.endpoint == 'admin.settings_page' %}aria-current="page"{% endif %}>Contenu du site</a>
+    <a href="{{ url_for('admin.backups') }}" {% if request.endpoint == 'admin.backups' %}aria-current="page"{% endif %}>Sauvegardes</a>
+    <a href="{{ url_for('admin.deployment') }}" {% if request.endpoint == 'admin.deployment' %}aria-current="page"{% endif %}>Déploiement</a>
+    <a href="{{ url_for('public.home') }}" target="_blank" rel="noopener">Voir le site ↗</a>
+  </nav>
+  <div class="userbox">
+    <span>{{ g.admin['username'] }}</span>
+    <a href="{{ url_for('admin.change_password') }}">Mot de passe</a>
+    <form method="post" action="{{ url_for('admin.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-sm" type="submit">Déconnexion</button>
+    </form>
+  </div>
+</header>
+{% endif %}
+<main class="wrap">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="flash flash-{{ category }}" role="status">{{ message }}</div>
+  {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

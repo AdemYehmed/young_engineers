@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{{ t('privacy.title') }} — {{ setting('club_name') }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container narrow prose">
+    <h1 class="h2">{{ t('privacy.title') }}</h1>
+    <p class="muted">{{ t('privacy.updated') }}</p>
+    {% for i in range(1, 9) %}
+    <h2>{{ t('privacy.s' ~ i ~ '.title') }}</h2>
+    <p>{{ t('privacy.s' ~ i ~ '.text', email=setting('email'), months=setting('data_retention_months')) }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

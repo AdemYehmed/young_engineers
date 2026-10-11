@@ -1,0 +1,14 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+instance/*
+!instance/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+.requirements.stamp
+
+# Dossier netlify_front/ : généré par scripts/build_netlify.py ; s'il contient un secret, dépôt PRIVÉ.

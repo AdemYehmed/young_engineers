@@ -1,0 +1,14 @@
+{% extends 'admin/base.html' %}
+{% block title %}Confirmer la suppression{% endblock %}
+{% block content %}
+<div class="panel confirm-box">
+  <h1>Confirmer la suppression</h1>
+  <p>Vous allez supprimer définitivement <strong>{{ what }}</strong>. Cette action est irréversible.</p>
+  <form method="post" action="{{ action }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="confirm" value="yes">
+    <button class="btn btn-danger" type="submit">Oui, supprimer</button>
+    <a class="btn" href="{{ back }}">Annuler</a>
+  </form>
+</div>
+{% endblock %}

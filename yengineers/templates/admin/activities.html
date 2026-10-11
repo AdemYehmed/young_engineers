@@ -1,0 +1,30 @@
+{% extends 'admin/base.html' %}
+{% block title %}Activités{% endblock %}
+{% block content %}
+<div class="panel-head">
+  <h1>Activités</h1>
+  <a class="btn btn-primary" href="{{ url_for('admin.activity_new') }}">+ Ajouter une activité</a>
+</div>
+<p class="muted">Les activités publiées apparaissent automatiquement sur le site public, dans l'ordre d'affichage croissant.</p>
+{% if rows %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Ordre</th><th>Titre (FR)</th><th>Titre (AR)</th><th>Titre (EN)</th><th>Image</th><th>État</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for a in rows %}
+  <tr>
+    <td>{{ a['sort_order'] }}</td><td>{{ a['title_fr'] }}</td><td dir="rtl">{{ a['title_ar'] }}</td><td>{{ a['title_en'] }}</td>
+    <td>{% if a['image'] %}<img class="thumb" src="{{ url_for('public.media', filename=a['image']) }}" alt="">{% else %}{{ ICONS.get(a['icon'], a['icon']) }}{% endif %}</td>
+    <td><span class="tag {{ 'tag-contacted' if a['is_published'] else 'tag-archived' }}">{{ 'Publiée' if a['is_published'] else 'Masquée' }}</span></td>
+    <td class="row-actions">
+      <a class="btn btn-sm" href="{{ url_for('admin.activity_edit', act_id=a['id']) }}">Modifier</a>
+      <form method="post" action="{{ url_for('admin.activity_toggle', act_id=a['id']) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm" type="submit">{{ 'Masquer' if a['is_published'] else 'Publier' }}</button></form>
+      <a class="btn btn-sm btn-danger" href="{{ url_for('admin.activity_delete', act_id=a['id']) }}">Supprimer…</a>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<p class="panel muted">Aucune activité. Ajoutez-en une pour qu'elle apparaisse sur le site.</p>{% endif %}
+{% endblock %}

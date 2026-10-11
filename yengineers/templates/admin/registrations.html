@@ -1,0 +1,59 @@
+{% extends 'admin/base.html' %}
+{% block title %}Préinscriptions{% endblock %}
+{% block content %}
+<div class="panel-head">
+  <h1>Préinscriptions <small class="muted">({{ total }})</small></h1>
+  <a class="btn" href="{{ url_for('admin.registrations_export', **query) }}">Exporter en CSV</a>
+</div>
+
+<form class="filters" method="get" action="{{ url_for('admin.registrations_list') }}">
+  <div><label for="q">Recherche</label>
+    <input id="q" name="q" type="search" value="{{ f.get('q', '') }}" placeholder="Nom, email, téléphone, référence" maxlength="100"></div>
+  <div><label for="age">Âge</label>
+    <select id="age" name="age"><option value="">Tous</option>
+      {% for a in range(13, 19) %}<option value="{{ a }}" {{ 'selected' if f.get('age') == a|string }}>{{ a }} ans</option>{% endfor %}
+    </select></div>
+  <div><label for="interest">Centre d'intérêt</label>
+    <select id="interest" name="interest"><option value="">Tous</option>
+      {% for k in INTERESTS %}<option value="{{ k }}" {{ 'selected' if f.get('interest') == k }}>{{ INTEREST_LABELS[k] }}</option>{% endfor %}
+    </select></div>
+  <div><label for="status">Statut</label>
+    <select id="status" name="status"><option value="">Tous</option>
+      {% for k in STATUSES %}<option value="{{ k }}" {{ 'selected' if f.get('status') == k }}>{{ STATUS_LABELS[k] }}</option>{% endfor %}
+    </select></div>
+  <div><label for="date_from">Du</label><input id="date_from" name="date_from" type="date" value="{{ f.get('date_from', '') }}"></div>
+  <div><label for="date_to">Au</label><input id="date_to" name="date_to" type="date" value="{{ f.get('date_to', '') }}"></div>
+  <div class="filter-actions"><button class="btn btn-primary" type="submit">Filtrer</button>
+    <a class="btn" href="{{ url_for('admin.registrations_list') }}">Réinitialiser</a></div>
+</form>
+
+{% if rows %}
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Date</th><th>Référence</th><th>Jeune</th><th>Âge</th><th>Parent</th><th>Contact</th><th>Intérêts</th><th>Niveau</th><th>Statut</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td>{{ r['created_at']|localdt }}</td>
+    <td><a href="{{ url_for('admin.registration_detail', reg_id=r['id']) }}">{{ r['reference'] }}</a></td>
+    <td>{{ r['youth_first_name'] }}</td><td>{{ r['age'] }}</td><td>{{ r['parent_name'] }}</td>
+    <td><bdi dir="ltr">{{ r['phone'] }}</bdi><br><bdi dir="ltr">{{ r['email'] }}</bdi></td>
+    <td>{% for i in (r['interests'] or '').split(',') if i %}{{ INTEREST_LABELS.get(i, i) }}{{ ', ' if not loop.last }}{% endfor %}</td>
+    <td>{{ LEVEL_LABELS[r['experience_level']] }}</td>
+    <td><span class="tag tag-{{ r['status'] }}">{{ STATUS_LABELS[r['status']] }}</span></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if pages > 1 %}
+<nav class="pager" aria-label="Pagination">
+  {% if page > 1 %}<a class="btn" href="{{ url_for('admin.registrations_list', page=page-1, **query) }}">← Précédent</a>{% endif %}
+  <span>Page {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a class="btn" href="{{ url_for('admin.registrations_list', page=page+1, **query) }}">Suivant →</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<p class="panel muted">Aucune préinscription ne correspond à ces critères.</p>
+{% endif %}
+{% endblock %}

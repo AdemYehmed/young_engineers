@@ -1,0 +1,34 @@
+# Blueprint Render : service web Flask + base PostgreSQL.
+# Aucun secret ici : SECRET_KEY est généré par Render, DATABASE_URL vient de la base.
+services:
+  - type: web
+    name: young-engineers-api
+    runtime: python
+    plan: free
+    region: frankfurt          # le plus proche de la Tunisie ; modifiable
+    buildCommand: pip install -r requirements-prod.txt
+    startCommand: gunicorn app:app --workers 2 --threads 2 --timeout 60 --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: YE_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: young-engineers-db
+          property: connectionString
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "2"
+      # À renseigner dans le tableau de bord Render (jamais dans ce fichier) :
+      - key: BOOTSTRAP_ADMIN_USERNAME
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD_HASH
+        sync: false
+
+databases:
+  - name: young-engineers-db
+    plan: free                 # expire après 30 jours, sans sauvegarde : voir DEPLOIEMENT.md
+    region: frankfurt
