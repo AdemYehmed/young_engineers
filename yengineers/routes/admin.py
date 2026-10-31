@@ -220,13 +220,23 @@ def registration_detail(reg_id):
             except IntegrityErrors:
                 errors["email"] = ("Une autre préinscription existe déjà avec cet email et ce prénom.", {})
             else:
-                flash("Préinscription mise à jour.", "success")
+                if status == "confirmed":
+                    _ensure_member(reg_id)
+                    flash("Préinscription confirmée : le membre est dans la liste des membres.", "success")
+                else:
+                    flash("Préinscription mise à jour.", "success")
                 return redirect(url_for("admin.registration_detail", reg_id=reg_id))
         values = dict(request.form)
         values["interests"] = request.form.getlist("interests")
     member = get_db().execute("SELECT id FROM members WHERE registration_id = ?", (reg_id,)).fetchone()
     return render_template("admin/registration_detail.html", r=row, errors=errors,
                            values=values, errmsg=_admin_error_text, member=member)
+
+
+def _ensure_member(reg_id):
+    """Statut « Confirmé » : le jeune devient membre (une seule fois, même si on confirme plusieurs fois)."""
+    from ..services import club
+    return club.confirm_registration(get_db(), reg_id, current_app.config["LOCAL_UTC_OFFSET_HOURS"])
 
 
 def _admin_error_text(err):
@@ -246,7 +256,11 @@ def registration_status(reg_id):
     with db:
         db.execute("UPDATE registrations SET status=?, updated_at=datetime('now') WHERE id=?",
                    (status, reg_id))
-    flash("Statut mis à jour.", "success")
+    if status == "confirmed":
+        _ensure_member(reg_id)
+        flash("Préinscription confirmée : le membre est dans la liste des membres.", "success")
+    else:
+        flash("Statut mis à jour.", "success")
     return redirect(security.safe_next(request.form.get("next")) or
                     url_for("admin.registration_detail", reg_id=reg_id))
 
