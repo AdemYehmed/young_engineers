@@ -10,6 +10,6 @@
 
 [[redirects]]
   from = "/*"
-  to = "https://young-engineers-api.onrender.com/:splat"
+  to = "https://169-58-195-202.sslip.io/:splat"
   status = 200
   force = true
