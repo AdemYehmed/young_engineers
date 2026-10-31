@@ -12,13 +12,14 @@ from pathlib import Path
 from flask import current_app, g
 
 from .defaults import DEFAULT_ACTIVITIES, DEFAULT_FAQS, DEFAULT_SETTINGS
+from .text_migrations import TEXT_MIGRATIONS
 
 try:  # PostgreSQL est optionnel : seulement nécessaire si DATABASE_URL est défini
     import psycopg
 except ImportError:  # pragma: no cover
     psycopg = None
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 IntegrityErrors = (sqlite3.IntegrityError,) + ((psycopg.errors.IntegrityError,) if psycopg else ())
 DatabaseErrors = (sqlite3.Error,) + ((psycopg.Error,) if psycopg else ())
@@ -39,7 +40,7 @@ CREATE TABLE IF NOT EXISTS registrations (
     reference          TEXT NOT NULL UNIQUE,
     parent_name        TEXT NOT NULL CHECK (length(parent_name) BETWEEN 2 AND 100),
     youth_first_name   TEXT NOT NULL CHECK (length(youth_first_name) BETWEEN 2 AND 60),
-    age                INTEGER NOT NULL CHECK (age BETWEEN 13 AND 18),
+    age                INTEGER NOT NULL CHECK (age BETWEEN 7 AND 18),
     phone              TEXT NOT NULL,
     email              TEXT NOT NULL,
     preferred_language TEXT NOT NULL CHECK (preferred_language IN ('ar','fr','en')),
@@ -48,7 +49,7 @@ CREATE TABLE IF NOT EXISTS registrations (
     consent            INTEGER NOT NULL CHECK (consent = 1),
     consent_at         TEXT NOT NULL,
     status             TEXT NOT NULL DEFAULT 'new'
-                       CHECK (status IN ('new','contacted','waiting','archived')),
+                       CHECK (status IN ('new','contacted','waiting','confirmed','archived')),
     admin_note         TEXT NOT NULL DEFAULT '',
     dedupe_hash        TEXT NOT NULL UNIQUE,
     created_at         TEXT NOT NULL DEFAULT {now},
@@ -108,6 +109,96 @@ CREATE TABLE IF NOT EXISTS media (
     created_at TEXT NOT NULL DEFAULT {now}
 );
 
+CREATE TABLE IF NOT EXISTS club_groups (
+    id             {pk},
+    name           TEXT NOT NULL UNIQUE CHECK (length(name) BETWEEN 2 AND 80),
+    age_min        INTEGER NOT NULL CHECK (age_min BETWEEN 3 AND 30),
+    age_max        INTEGER NOT NULL CHECK (age_max BETWEEN 3 AND 30),
+    default_start  TEXT NOT NULL DEFAULT '',
+    default_end    TEXT NOT NULL DEFAULT '',
+    fee_millimes   INTEGER NOT NULL DEFAULT 0 CHECK (fee_millimes >= 0),
+    notes          TEXT NOT NULL DEFAULT '',
+    is_active      INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
+    created_at     TEXT NOT NULL DEFAULT {now},
+    updated_at     TEXT NOT NULL DEFAULT {now}
+);
+
+CREATE TABLE IF NOT EXISTS members (
+    id                   {pk},
+    registration_id      INTEGER UNIQUE REFERENCES registrations(id) ON DELETE SET NULL,
+    first_name           TEXT NOT NULL CHECK (length(first_name) BETWEEN 2 AND 60),
+    last_name            TEXT NOT NULL DEFAULT '',
+    age                  INTEGER NOT NULL CHECK (age BETWEEN 3 AND 30),
+    parent_name          TEXT NOT NULL DEFAULT '',
+    phone                TEXT NOT NULL DEFAULT '',
+    email                TEXT NOT NULL DEFAULT '',
+    group_id             INTEGER REFERENCES club_groups(id) ON DELETE SET NULL,
+    status               TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused','left')),
+    joined_on            TEXT NOT NULL DEFAULT '',
+    fee_override_millimes INTEGER CHECK (fee_override_millimes IS NULL OR fee_override_millimes >= 0),
+    notes                TEXT NOT NULL DEFAULT '',
+    created_at           TEXT NOT NULL DEFAULT {now},
+    updated_at           TEXT NOT NULL DEFAULT {now}
+);
+CREATE INDEX IF NOT EXISTS idx_members_group  ON members(group_id);
+CREATE INDEX IF NOT EXISTS idx_members_status ON members(status);
+
+CREATE TABLE IF NOT EXISTS club_sessions (
+    id           {pk},
+    group_id     INTEGER NOT NULL REFERENCES club_groups(id) ON DELETE RESTRICT,
+    title        TEXT NOT NULL DEFAULT '',
+    session_date TEXT NOT NULL,
+    start_time   TEXT NOT NULL DEFAULT '',
+    end_time     TEXT NOT NULL DEFAULT '',
+    status       TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned','done','cancelled')),
+    location     TEXT NOT NULL DEFAULT '',
+    comment      TEXT NOT NULL DEFAULT '',
+    created_at   TEXT NOT NULL DEFAULT {now},
+    updated_at   TEXT NOT NULL DEFAULT {now}
+);
+CREATE INDEX IF NOT EXISTS idx_club_sessions_date  ON club_sessions(session_date);
+CREATE INDEX IF NOT EXISTS idx_club_sessions_group ON club_sessions(group_id);
+
+CREATE TABLE IF NOT EXISTS attendance (
+    session_id INTEGER NOT NULL REFERENCES club_sessions(id) ON DELETE CASCADE,
+    member_id  INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    status     TEXT NOT NULL CHECK (status IN ('present','absent','excused','late')),
+    note       TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT {now},
+    PRIMARY KEY (session_id, member_id)
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+    id              {pk},
+    member_id       INTEGER NOT NULL REFERENCES members(id) ON DELETE RESTRICT,
+    amount_millimes INTEGER NOT NULL CHECK (amount_millimes > 0),
+    paid_on         TEXT NOT NULL,
+    period          TEXT NOT NULL DEFAULT '',
+    method          TEXT NOT NULL DEFAULT 'cash' CHECK (method IN ('cash','transfer','other')),
+    note            TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL DEFAULT {now}
+);
+CREATE INDEX IF NOT EXISTS idx_payments_member ON payments(member_id);
+CREATE INDEX IF NOT EXISTS idx_payments_period ON payments(period);
+
+CREATE TABLE IF NOT EXISTS media_items (
+    id                {pk},
+    kind              TEXT NOT NULL CHECK (kind IN ('photo','video')),
+    filename          TEXT NOT NULL UNIQUE,
+    original_name     TEXT NOT NULL DEFAULT '',
+    mimetype          TEXT NOT NULL,
+    size_bytes        INTEGER NOT NULL DEFAULT 0,
+    title             TEXT NOT NULL DEFAULT '',
+    caption           TEXT NOT NULL DEFAULT '',
+    session_id        INTEGER REFERENCES club_sessions(id) ON DELETE SET NULL,
+    is_public         INTEGER NOT NULL DEFAULT 0 CHECK (is_public IN (0,1)),
+    consent_confirmed INTEGER NOT NULL DEFAULT 0 CHECK (consent_confirmed IN (0,1)),
+    created_at        TEXT NOT NULL DEFAULT {now},
+    updated_at        TEXT NOT NULL DEFAULT {now},
+    CHECK (is_public = 0 OR consent_confirmed = 1)
+);
+CREATE INDEX IF NOT EXISTS idx_media_items_public ON media_items(is_public, created_at);
+
 CREATE TABLE IF NOT EXISTS rate_events (
     id         {pk},
     kind       TEXT NOT NULL,
@@ -124,6 +215,13 @@ _TOKENS = {
     "postgres": {"pk": "SERIAL PRIMARY KEY", "now": f"({_PG_NOW})",
                  "real": "DOUBLE PRECISION", "blob": "BYTEA"},
 }
+
+
+DEFAULT_GROUPS = (
+    # Groupes décrits par le club : 12-18 ans (séances de 9h à 12h) et 7-11 ans (horaires à définir).
+    {"name": "12–18 ans", "age_min": 12, "age_max": 18, "default_start": "09:00", "default_end": "12:00"},
+    {"name": "7–11 ans", "age_min": 7, "age_max": 11, "default_start": "", "default_end": ""},
+)
 
 
 def kind_of(target):
@@ -213,7 +311,8 @@ def connect(target):
         if psycopg is None:
             raise RuntimeError("PostgreSQL demandé mais le paquet « psycopg » n'est pas installé "
                                "(pip install -r requirements-prod.txt).")
-        raw = psycopg.connect(str(target), row_factory=_row_factory, connect_timeout=10)
+        raw = psycopg.connect(str(target), row_factory=_row_factory, connect_timeout=10,
+                              prepare_threshold=None)  # compatible avec les « poolers » (Supabase, pgbouncer)
         return Database(raw, "postgres")
     raw = sqlite3.connect(str(target), timeout=15)
     raw.row_factory = sqlite3.Row
@@ -243,6 +342,64 @@ def close_db(_exc=None):
 
 
 # --------------------------------------------------------------------------
+# Migrations (anciennes bases : âge 13-18 et statuts sans « confirmed »)
+# --------------------------------------------------------------------------
+def _migrate_registrations_sqlite(db):
+    """SQLite ne peut pas modifier une contrainte CHECK : on reconstruit la table (données conservées)."""
+    row = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='registrations'").fetchone()
+    if row is None:
+        return
+    ddl = row[0] or ""
+    if "BETWEEN 13 AND 18" not in ddl and "'confirmed'" in ddl:
+        return
+    create = next(st for st in schema_statements("sqlite")
+                  if st.startswith("CREATE TABLE IF NOT EXISTS registrations ("))
+    create = create.replace("CREATE TABLE IF NOT EXISTS registrations (",
+                            "CREATE TABLE registrations_new (", 1)
+    cols = [r[1] for r in db.execute("PRAGMA table_info(registrations)")]
+    col_list = ", ".join(cols)
+    db.raw.execute("PRAGMA foreign_keys = OFF")  # sinon DROP TABLE effacerait les intérêts liés (CASCADE)
+    try:
+        db.raw.execute("BEGIN IMMEDIATE")
+        try:
+            db.raw.execute("DROP TABLE IF EXISTS registrations_new")
+            db.raw.execute(create)
+            db.raw.execute(f"INSERT INTO registrations_new ({col_list}) SELECT {col_list} FROM registrations")
+            db.raw.execute("DROP TABLE registrations")
+            db.raw.execute("ALTER TABLE registrations_new RENAME TO registrations")
+            db.raw.execute("COMMIT")
+        except Exception:
+            db.raw.execute("ROLLBACK")
+            raise
+    finally:
+        db.raw.execute("PRAGMA foreign_keys = ON")
+
+
+def _migrate_registrations_postgres(db):
+    rows = db.execute(
+        "SELECT conname, pg_get_constraintdef(oid) AS d FROM pg_constraint "
+        "WHERE conrelid = 'registrations'::regclass AND contype = 'c'").fetchall()
+    for r in rows:
+        name, d = r["conname"], r["d"]
+        if "age" in d and "13" in d:
+            db.execute(f'ALTER TABLE registrations DROP CONSTRAINT "{name}"')
+            db.execute("ALTER TABLE registrations ADD CONSTRAINT registrations_age_check "
+                       "CHECK (age BETWEEN 7 AND 18)")
+        elif "archived" in d and "confirmed" not in d:
+            db.execute(f'ALTER TABLE registrations DROP CONSTRAINT "{name}"')
+            db.execute("ALTER TABLE registrations ADD CONSTRAINT registrations_status_check "
+                       "CHECK (status IN ('new','contacted','waiting','confirmed','archived'))")
+
+
+def _apply_text_migrations(db):
+    """Met à jour les textes par défaut devenus obsolètes, SEULEMENT s'ils n'ont pas été modifiés à la main."""
+    for key, old, new in TEXT_MIGRATIONS["settings"]:
+        db.execute("UPDATE site_settings SET value = ? WHERE key = ? AND value = ?", (new, key, old))
+    for column, old, new in TEXT_MIGRATIONS["faqs"]:
+        db.execute(f"UPDATE faqs SET {column} = ? WHERE {column} = ?", (new, old))
+
+
+# --------------------------------------------------------------------------
 # Initialisation (idempotente : ne supprime ni n'écrase jamais de données)
 # --------------------------------------------------------------------------
 def init_db(target, bootstrap_admin=None):
@@ -255,11 +412,15 @@ def init_db(target, bootstrap_admin=None):
         Path(str(target)).parent.mkdir(parents=True, exist_ok=True)
     db = connect(target)
     try:
+        if kind == "sqlite":
+            _migrate_registrations_sqlite(db)
         with db:  # une seule transaction : tout ou rien
             if kind == "postgres":  # plusieurs workers au démarrage : un seul initialise à la fois
                 db.execute("SELECT pg_advisory_xact_lock(8472911)")
             for statement in schema_statements(kind):
                 db.execute(statement)
+            if kind == "postgres":
+                _migrate_registrations_postgres(db)
             for key, value in DEFAULT_SETTINGS.items():
                 db.execute("INSERT INTO site_settings(key, value) VALUES (?, ?) "
                            "ON CONFLICT(key) DO NOTHING", (key, value))
@@ -283,6 +444,14 @@ def init_db(target, bootstrap_admin=None):
                         (f["question_ar"], f["question_fr"], f["question_en"], f["answer_ar"],
                          f["answer_fr"], f["answer_en"], i * 10))
                 db.execute("INSERT INTO site_settings(key, value) VALUES ('_content_seeded', '1')")
+            if not db.execute("SELECT 1 FROM site_settings WHERE key = '_groups_seeded'").fetchone():
+                if db.execute("SELECT COUNT(*) AS n FROM club_groups").fetchone()["n"] == 0:
+                    for g_ in DEFAULT_GROUPS:
+                        db.execute("INSERT INTO club_groups(name, age_min, age_max, default_start, default_end) "
+                                   "VALUES (?,?,?,?,?)", (g_["name"], g_["age_min"], g_["age_max"],
+                                                          g_["default_start"], g_["default_end"]))
+                db.execute("INSERT INTO site_settings(key, value) VALUES ('_groups_seeded', '1')")
+            _apply_text_migrations(db)
             if bootstrap_admin:
                 username, password_hash = bootstrap_admin
                 if db.execute("SELECT COUNT(*) AS n FROM admins").fetchone()["n"] == 0:

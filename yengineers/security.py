@@ -46,10 +46,24 @@ def proxy_secret_ok():
 
 
 def enforce_proxy_secret():
-    """before_request : si un secret est configuré, seul le front Netlify peut joindre l'application."""
+    """before_request : si un secret est configuré, seul le front Netlify peut joindre l'application.
+
+    /healthz et /files/ (photos et vidéos publiques, chargées directement depuis le serveur) restent accessibles.
+    """
     if current_app.config.get("PROXY_SHARED_SECRET") and request.path != "/healthz" \
-            and not proxy_secret_ok():
+            and not request.path.startswith("/files/") and not proxy_secret_ok():
         abort(403)
+
+
+def enforce_body_size():
+    """before_request : requêtes petites partout, grandes seulement pour l'envoi de médias par l'admin connecté."""
+    length = request.content_length
+    if length is None:
+        return
+    cfg = current_app.config
+    big_ok = request.endpoint == "admin.gallery_upload" and bool(session.get("admin_id"))
+    if length > (cfg["MAX_REQUEST_BYTES_MEDIA"] if big_ok else cfg["MAX_REQUEST_BYTES"]):
+        abort(413)
 
 
 def visitor_ip(req=None):
@@ -134,8 +148,10 @@ def safe_next(target, prefix="/admin"):
 
 
 def apply_security_headers(response):
+    media_origin = current_app.config.get("MEDIA_BASE_URL") or ""
     csp = (
-        "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
+        f"default-src 'self'; img-src 'self' data: {media_origin}; media-src 'self' {media_origin}; "
+        "style-src 'self'; script-src 'self'; "
         "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; "
         "form-action 'self'; frame-ancestors 'none'"
     )
@@ -152,7 +168,9 @@ def apply_security_headers(response):
             "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
         )
     path = request.path
-    if path.startswith("/admin") or path.startswith("/register"):
+    if path.startswith("/files/"):
+        pass  # en-têtes de cache définis par la route (public : long, privé : jamais)
+    elif path.startswith("/admin") or path.startswith("/register"):
         response.headers["Cache-Control"] = "no-store"
     elif response.mimetype == "text/html":
         # Pages dépendant de la langue (cookie) : jamais mises en cache par un CDN (Netlify)

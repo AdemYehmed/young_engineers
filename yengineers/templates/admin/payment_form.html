@@ -1,0 +1,20 @@
+{% extends 'admin/base.html' %}
+{% block title %}Paiement{% endblock %}
+{% block content %}
+{% set d = v if v else (dict(row) if row else {}) %}
+<div class="panel-head"><h1>{{ 'Modifier le' if row else 'Nouveau' }} paiement</h1>
+  <a href="{{ next_url or url_for('admin.payments_page') }}">← Retour</a></div>
+<form class="panel form-grid" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <div><label for="member_id">Membre</label><select id="member_id" name="member_id" required><option value="">—</option>
+    {% for m in members %}<option value="{{ m['id'] }}" {{ 'selected' if d.get('member_id')|string == m['id']|string }}>{{ m['first_name'] }} {{ m['last_name'] }}</option>{% endfor %}</select></div>
+  <div><label for="amount">Montant (DT)</label><input id="amount" name="amount" inputmode="decimal" required value="{{ v.get('amount') if v else ((row['amount_millimes']|money) if row else '') }}"></div>
+  <div><label for="paid_on">Date de paiement</label><input id="paid_on" name="paid_on" type="date" value="{{ d.get('paid_on', '') }}"></div>
+  <div><label for="period">Mois concerné (AAAA-MM)</label><input id="period" name="period" type="month" value="{{ d.get('period', '') }}"></div>
+  <div><label for="method">Mode</label><select id="method" name="method">
+    {% for k in PAYMENT_METHODS %}<option value="{{ k }}" {{ 'selected' if (d.get('method') or 'cash') == k }}>{{ METHOD_LABELS[k] }}</option>{% endfor %}</select></div>
+  <div><label for="note">Note</label><input id="note" name="note" maxlength="300" value="{{ d.get('note', '') }}"></div>
+  <div class="wide actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+</form>
+{% endblock %}

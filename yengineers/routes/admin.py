@@ -21,7 +21,7 @@ from ..services.uploads import UploadError, delete_image, save_image
 bp = Blueprint("admin", __name__)
 
 STATUS_LABELS = {"new": "Nouveau", "contacted": "Contacté", "waiting": "En attente",
-                 "archived": "Archivé"}
+                 "confirmed": "Confirmé", "archived": "Archivé"}
 INTEREST_LABELS = {"robotics": "Robotique", "programming": "Programmation",
                    "electronics": "Électronique", "projects": "Projets pratiques"}
 LEVEL_LABELS = {"beginner": "Débutant", "intermediate": "Intermédiaire", "advanced": "Avancé"}
@@ -131,8 +131,12 @@ def change_password():
 # --------------------------------------------------------- tableau de bord
 @bp.route("/")
 def dashboard():
-    stats = regs.dashboard_stats(get_db())
-    return render_template("admin/dashboard.html", stats=stats)
+    from ..services import club
+    db = get_db()
+    today = club.local_today(current_app.config["LOCAL_UTC_OFFSET_HOURS"]).isoformat()
+    stats = regs.dashboard_stats(db)
+    return render_template("admin/dashboard.html", stats=stats,
+                           club=club.club_summary(db, today, today[:7]))
 
 
 # ------------------------------------------------------------ préinscriptions
@@ -220,8 +224,9 @@ def registration_detail(reg_id):
                 return redirect(url_for("admin.registration_detail", reg_id=reg_id))
         values = dict(request.form)
         values["interests"] = request.form.getlist("interests")
+    member = get_db().execute("SELECT id FROM members WHERE registration_id = ?", (reg_id,)).fetchone()
     return render_template("admin/registration_detail.html", r=row, errors=errors,
-                           values=values, errmsg=_admin_error_text)
+                           values=values, errmsg=_admin_error_text, member=member)
 
 
 def _admin_error_text(err):
@@ -545,3 +550,7 @@ def deployment():
         "Schéma vu": request.scheme,
     }
     return render_template("admin/deployment.html", info=info)
+
+
+# Routes du club (groupes, membres, séances, paiements, galerie) : même blueprint, importées en dernier.
+from . import admin_club  # noqa: E402,F401

@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from flask import Flask, render_template, url_for
+from flask import Flask, render_template, request, url_for
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -12,6 +12,7 @@ from config import build_config
 
 from . import db as database
 from . import i18n, security
+from .services import media_files
 from .services.settings import setting
 
 
@@ -32,8 +33,11 @@ def create_app(test_config=None):
         n = app.config["TRUST_PROXY"]
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=n, x_proto=n, x_host=n)
 
-    for key in ("INSTANCE_DIR", "BACKUP_DIR"):
-        Path(app.config[key]).mkdir(parents=True, exist_ok=True)
+    for key in ("INSTANCE_DIR", "BACKUP_DIR", "MEDIA_DIR"):
+        try:
+            Path(app.config[key]).mkdir(parents=True, exist_ok=True)
+        except OSError:  # disque en lecture seule (Vercel) : inutile avec PostgreSQL
+            app.logger.warning("Dossier %s non créé (lecture seule).", key)
 
     logging.basicConfig(level=logging.INFO if app.config["PRODUCTION"] else logging.DEBUG)
 
@@ -47,14 +51,29 @@ def create_app(test_config=None):
 
     i18n.init_app(app)
     app.before_request(security.enforce_proxy_secret)
+    app.before_request(security.enforce_body_size)
     app.before_request(security.csrf_protect)
     app.after_request(security.apply_security_headers)
+
+    def _file_url(name, absolute=False):
+        """Adresse d'une photo/vidéo. `absolute` : depuis le serveur de fichiers (VPS) s'il est configuré."""
+        path = url_for("public.media_file", name=name)
+        base = app.config.get("MEDIA_BASE_URL") if absolute else ""
+        return f"{base}{path}" if base else path
 
     # ---------------------------------------------------------- gabarits
     @app.context_processor
     def _globals():
         logo = setting("logo_file")
+        has_gallery = False
+        if request.endpoint and not request.endpoint.startswith("admin."):
+            try:
+                has_gallery = media_files.count_public(database.get_db()) > 0
+            except database.DatabaseErrors:
+                has_gallery = False
         return {
+            "has_gallery": has_gallery,
+            "file_url": _file_url,
             "csrf_token": security.csrf_token,
             "setting": setting,
             "logo_url": (url_for("public.media", filename=logo) if logo

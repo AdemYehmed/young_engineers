@@ -1,0 +1,24 @@
+{% extends 'admin/base.html' %}
+{% block title %}Membres{% endblock %}
+{% block content %}
+<div class="panel-head"><h1>Membres <small class="muted">({{ rows|length }})</small></h1>
+  <div class="actions"><a class="btn" href="{{ url_for('admin.groups_list') }}">Groupes</a>
+  <a class="btn btn-primary" href="{{ url_for('admin.member_new') }}">+ Nouveau membre</a></div></div>
+<form class="filters" method="get">
+  <div><label for="q">Recherche</label><input id="q" name="q" type="search" maxlength="100" value="{{ f.get('q', '') }}"></div>
+  <div><label for="group">Groupe</label><select id="group" name="group"><option value="">Tous</option>
+    {% for g in groups %}<option value="{{ g['id'] }}" {{ 'selected' if f.get('group') == g['id']|string }}>{{ g['name'] }}</option>{% endfor %}</select></div>
+  <div><label for="status">Statut</label><select id="status" name="status"><option value="">Tous</option>
+    {% for k in MEMBER_STATUSES %}<option value="{{ k }}" {{ 'selected' if f.get('status') == k }}>{{ MEMBER_LABELS[k] }}</option>{% endfor %}</select></div>
+  <div class="filter-actions"><button class="btn btn-primary" type="submit">Filtrer</button>
+    <a class="btn" href="{{ url_for('admin.members_list') }}">Réinitialiser</a></div>
+</form>
+{% if rows %}<div class="table-wrap"><table>
+  <thead><tr><th>Nom</th><th>Âge</th><th>Groupe</th><th>Parent</th><th>Téléphone</th><th>Statut</th></tr></thead>
+  <tbody>{% for m in rows %}<tr>
+    <td><a href="{{ url_for('admin.member_detail', member_id=m['id']) }}">{{ m['first_name'] }} {{ m['last_name'] }}</a></td>
+    <td>{{ m['age'] }}</td><td>{{ m['group_name'] or '—' }}</td><td>{{ m['parent_name'] }}</td>
+    <td><bdi dir="ltr">{{ m['phone'] }}</bdi></td>
+    <td><span class="tag tag-{{ m['status'] }}">{{ MEMBER_LABELS[m['status']] }}</span></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="muted">Aucun membre. Confirmez une préinscription ou ajoutez un membre.</p>{% endif %}
+{% endblock %}

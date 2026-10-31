@@ -4,6 +4,7 @@ Toutes les valeurs sensibles viennent de variables d'environnement
 (fichier .env en local). Aucun secret n'est codé en dur.
 """
 import os
+import re
 import secrets
 from pathlib import Path
 
@@ -50,6 +51,11 @@ def build_config(env=None):
 
     instance_dir = Path(env.get("YE_INSTANCE_DIR") or (BASE_DIR / "instance"))
     max_upload_mb = max(1, _int(env.get("MAX_UPLOAD_MB"), 3))
+    max_photo_mb = max(1, _int(env.get("MAX_PHOTO_MB"), 10))
+    max_video_mb = max(1, _int(env.get("MAX_VIDEO_MB"), 300))
+    media_base_url = (env.get("MEDIA_BASE_URL") or "").strip().rstrip("/")
+    if media_base_url and not re.fullmatch(r"https?://[A-Za-z0-9.\-]+(:\d{1,5})?", media_base_url):
+        raise RuntimeError("MEDIA_BASE_URL doit ressembler à https://exemple.com (sans chemin).")
     database_url = (env.get("DATABASE_URL") or "").strip()
     if database_url.startswith(("postgres://", "postgresql://")):
         db_target, db_kind = database_url, "postgres"
@@ -57,9 +63,9 @@ def build_config(env=None):
         raise RuntimeError("DATABASE_URL doit commencer par postgresql:// (ou être vide pour SQLite).")
     else:
         db_target, db_kind = env.get("DATABASE_PATH") or str(instance_dir / "young_engineers.db"), "sqlite"
-    if production and env.get("RENDER") and db_kind == "sqlite":
+    if production and (env.get("RENDER") or env.get("VERCEL")) and db_kind == "sqlite":
         raise RuntimeError(
-            "Sur Render, le disque est effacé à chaque redémarrage : définissez DATABASE_URL (PostgreSQL)."
+            "Sur Render/Vercel, le disque n'est pas conservé : définissez DATABASE_URL (PostgreSQL)."
         )
 
     secret = (env.get("SECRET_KEY") or "").strip()
@@ -89,9 +95,19 @@ def build_config(env=None):
         "DATABASE": db_target,
         "DB_KIND": db_kind,
         "UPLOAD_DIR": env.get("UPLOAD_DIR") or str(instance_dir / "uploads"),
+        # Photos et vidéos de la galerie : fichiers sur le disque du serveur (pas dans la base)
+        "MEDIA_DIR": env.get("MEDIA_DIR") or str(instance_dir / "media"),
+        "MAX_PHOTO_MB": max_photo_mb,
+        "MAX_VIDEO_MB": max_video_mb,
+        # Adresse publique du serveur de fichiers (ex. https://169-58-195-202.sslip.io) quand le site est
+        # servi derrière Netlify : les photos/vidéos publiques sont alors chargées directement depuis le VPS.
+        "MEDIA_BASE_URL": media_base_url,
         "BACKUP_DIR": env.get("BACKUP_DIR") or str(instance_dir / "backups"),
         "MAX_UPLOAD_MB": max_upload_mb,
-        "MAX_CONTENT_LENGTH": (max_upload_mb + 1) * 1024 * 1024,
+        # Taille maximale d'une requête : petite partout, grande seulement pour l'envoi de médias (admin connecté)
+        "MAX_REQUEST_BYTES": (max_upload_mb + 1) * 1024 * 1024,
+        "MAX_REQUEST_BYTES_MEDIA": (max(max_photo_mb, max_video_mb) + 5) * 1024 * 1024,
+        "MAX_CONTENT_LENGTH": (max(max_photo_mb, max_video_mb) + 5) * 1024 * 1024,
         # Sessions / cookies
         "SESSION_COOKIE_NAME": "ye_session",
         "SESSION_COOKIE_HTTPONLY": True,

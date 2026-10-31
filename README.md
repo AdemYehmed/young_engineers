@@ -10,6 +10,7 @@ Technologies : Python 3, Flask, SQLite, Jinja2, HTML/CSS/JavaScript. Aucun servi
 
 ---
 
+> **Mise en ligne gratuite : [DEPLOIEMENT-VERCEL.md](DEPLOIEMENT-VERCEL.md) (Vercel + Supabase).**
 > **Mise en ligne Netlify + Render + PostgreSQL : voir [DEPLOIEMENT.md](DEPLOIEMENT.md).**
 > Sources officielles : <https://render.com/docs/free> · <https://render.com/docs/blueprint-spec> · <https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/>
 

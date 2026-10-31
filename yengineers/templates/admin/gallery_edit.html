@@ -1,0 +1,13 @@
+{% extends 'admin/base.html' %}
+{% block title %}Modifier le média{% endblock %}
+{% block content %}
+{% set d = v if v else dict(item) %}
+<div class="panel-head"><h1>Modifier le média</h1><a href="{{ url_for('admin.gallery_list') }}">← Galerie</a></div>
+<form class="panel form-grid" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="wide">{% if item['kind'] == 'photo' %}<img src="{{ file_url(item['filename']) }}" alt="" style="max-width:320px;border-radius:10px">
+    {% else %}<video src="{{ file_url(item['filename']) }}" controls preload="metadata" style="max-width:420px"></video>{% endif %}</div>
+  {% include 'admin/_media_fields.html' %}
+  <div class="wide actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+</form>
+{% endblock %}

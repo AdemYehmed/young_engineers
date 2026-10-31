@@ -8,6 +8,7 @@ from flask import (Blueprint, Response, abort, current_app, flash, redirect,
 from .. import security
 from ..db import DatabaseErrors, get_db
 from ..i18n import LANGS, t
+from ..services import media_files
 from ..services import registrations as regs
 
 bp = Blueprint("public", __name__)
@@ -135,6 +136,44 @@ def media(filename):
         response = send_from_directory(current_app.config["UPLOAD_DIR"], filename)
     # Les noms sont aléatoires et uniques : un nouveau fichier = un nouveau nom, cache long sans risque.
     response.headers["Cache-Control"] = "public, max-age=86400"
+    return response
+
+
+GALLERY_PAGE_SIZE = 24
+
+
+@bp.route("/gallery")
+def gallery():
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+    except ValueError:
+        page = 1
+    db = get_db()
+    total = media_files.count_public(db)
+    items = media_files.list_items(db, public_only=True, limit=GALLERY_PAGE_SIZE,
+                                   offset=(page - 1) * GALLERY_PAGE_SIZE)
+    pages = max(1, -(-total // GALLERY_PAGE_SIZE))
+    return render_template("gallery.html", items=items, page=page, pages=pages)
+
+
+@bp.route("/files/<name>")
+def media_file(name):
+    """Photos et vidéos : publiques pour tous, privées pour l'administrateur connecté seulement."""
+    if not media_files.NAME_RE.match(name):
+        abort(404)
+    item = media_files.get_item_by_filename(get_db(), name)
+    if item is None or not media_files.file_exists(current_app.config["MEDIA_DIR"], name):
+        abort(404)
+    is_public = bool(item["is_public"])
+    if not is_public:
+        admin_id = session.get("admin_id")
+        if not admin_id or get_db().execute("SELECT 1 FROM admins WHERE id = ?", (admin_id,)).fetchone() is None:
+            abort(404)  # 404 plutôt que 403 : on ne révèle pas l'existence du fichier
+    # conditional=True : prise en charge des requêtes partielles (lecture/avance rapide des vidéos)
+    response = send_from_directory(current_app.config["MEDIA_DIR"], name, mimetype=item["mimetype"],
+                                   conditional=True, max_age=86400 if is_public else 0)
+    response.headers["Cache-Control"] = "public, max-age=86400" if is_public else "private, no-store"
+    response.headers["Content-Disposition"] = "inline"
     return response
 
 

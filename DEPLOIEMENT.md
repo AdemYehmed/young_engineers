@@ -1,10 +1,10 @@
-# Déploiement : Netlify (front) + Render (backend) + PostgreSQL
+# Déploiement : Netlify (front) + Render (backend) + Supabase (PostgreSQL)
 
 ## Comment ça marche
 ```
 Visiteur → Netlify (young-engineers.netlify.app)
               ├─ /static/*  → servi par Netlify (CSS, JS, images, polices)
-              └─ tout le reste → proxy → Render (Flask + gunicorn) → PostgreSQL
+              └─ tout le reste → proxy → Render (Flask + gunicorn) → Supabase (PostgreSQL)
 ```
 Les visiteurs ne voient qu'**une seule adresse** (Netlify). Les cookies de session et la protection
 CSRF restent donc « même site ». Le backend Flask génère les pages (arabe/français/anglais) ;
@@ -13,7 +13,7 @@ Netlify ne contient que les fichiers statiques et la règle de proxy.
 
 **Ce qui n'a pas pu être testé ici** : un vrai déploiement Netlify/Render (pas d'accès à vos comptes) et
 la connexion Python↔PostgreSQL (le paquet `psycopg` n'est pas installable dans mon environnement).
-Testés : 77 tests sur SQLite, et le schéma + les requêtes traduites exécutés sur un vrai PostgreSQL 16 via `psql`.
+Testés : 77 tests sur SQLite, et le schéma + les requêtes traduites exécutés sur un vrai PostgreSQL 16 via `psql` (Supabase est du PostgreSQL standard, mais je ne l'ai pas testé lui-même).
 D'où les **points de contrôle** ci-dessous : faites-les dans l'ordre.
 
 ---
@@ -39,31 +39,38 @@ python create_admin.py --username VOTRE_IDENTIFIANT --print-hash
 Saisissez un mot de passe d'au moins 12 caractères. Le script affiche `BOOTSTRAP_ADMIN_USERNAME=…` et
 `BOOTSTRAP_ADMIN_PASSWORD_HASH=scrypt:…` : **gardez ces deux lignes** (le mot de passe lui-même n'est jamais enregistré).
 
-## Étape 2 — Render : base PostgreSQL + backend
+## Étape 2 — Supabase : la base PostgreSQL
+1. supabase.com → *Start your project* → connectez-vous avec GitHub → *New project*.
+2. Nom `young-engineers`, **Database password** : générez-en un fort et **notez-le** (lettres et chiffres seulement évite les soucis d'encodage), région proche (ex. Frankfurt/Paris).
+3. Attendez ~2 min, puis cliquez sur **Connect** (en haut de la page du projet) → méthode **Session pooler**. Copiez l'adresse :
+   `postgresql://postgres.XXXX:[YOUR-PASSWORD]@aws-0-REGION.pooler.supabase.com:5432/postgres`
+4. Remplacez `[YOUR-PASSWORD]` par votre mot de passe (sans les crochets). Si le mot de passe contient `& # ? @ /` ou un espace, encodez-les (`@` → `%40`…).
+
+Pourquoi *Session pooler* : Render fonctionne en IPv4 ; la connexion « directe » de Supabase est en IPv6 (IPv4 = option payante). Le *Transaction pooler* (port 6543) évitez-le.
+Les tables et le contenu de départ sont créés automatiquement par l'application au premier démarrage : **ne rien créer à la main** dans Supabase.
+
+## Étape 2b — Render : le backend
 **Option A — Blueprint (le plus simple)**
 1. render.com → *New* → *Blueprint* → connectez GitHub → choisissez le dépôt. Render lit `render.yaml`.
-2. Il vous demande `BOOTSTRAP_ADMIN_USERNAME` et `BOOTSTRAP_ADMIN_PASSWORD_HASH` : collez les valeurs de l'étape 1.
-3. *Apply*. Render crée la base `young-engineers-db` et le service `young-engineers-api`.
+2. Il demande `DATABASE_URL` (l'adresse Supabase de l'étape 2), `BOOTSTRAP_ADMIN_USERNAME` et `BOOTSTRAP_ADMIN_PASSWORD_HASH` (étape 1).
+3. *Apply*. Render crée le service `young-engineers-api`.
 
 **Option B — manuelle**
-1. *New* → *PostgreSQL* : nom `young-engineers-db`, région la plus proche (Frankfurt). Copiez l'**Internal Database URL**.
-2. *New* → *Web Service* → votre dépôt. Runtime **Python 3** ; Build : `pip install -r requirements-prod.txt` ;
+1. *New* → *Web Service* → votre dépôt. Runtime **Python 3** ; Build : `pip install -r requirements-prod.txt` ;
    Start : `gunicorn app:app --workers 2 --threads 2 --timeout 60 --bind 0.0.0.0:$PORT` ; Health check path : `/healthz`.
-3. Variables d'environnement :
+2. Variables d'environnement :
 
 | Variable | Valeur |
 |---|---|
 | `YE_ENV` | `production` |
 | `SECRET_KEY` | 64 caractères aléatoires (`python3 -c "import secrets;print(secrets.token_hex(32))"`) |
-| `DATABASE_URL` | l'Internal Database URL |
+| `DATABASE_URL` | l'adresse Session pooler de Supabase |
 | `SESSION_COOKIE_SECURE` | `true` |
 | `TRUST_PROXY` | `2` (à vérifier, étape 5) |
 | `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD_HASH` | étape 1 |
 
-Les tables et le contenu de départ (activités, FAQ, paramètres) sont créés automatiquement au premier démarrage.
-
 > ✅ **Contrôle A** : ouvrez `https://VOTRE-SERVICE.onrender.com/healthz` → « ok ».
-> Puis `…/` → le site s'affiche. Si une erreur 500 apparaît, lisez *Logs* sur Render (le message dit si `psycopg` ou la base pose problème).
+> Puis `…/` → le site s'affiche. Erreur 500 ? Render → *Logs*. Dans Supabase → *Table Editor*, les tables (`registrations`, `activities`…) doivent être apparues.
 
 ## Étape 3 — Netlify : le front
 1. Sur votre ordinateur, générez le dossier front avec l'adresse Render :
@@ -110,18 +117,20 @@ Le backend sert déjà le site complet. Utilisez simplement `https://VOTRE-SERVI
 et laissez de côté Netlify. Rien d'autre à changer.
 
 ## Données et coûts — à lire
-- **Base gratuite Render : elle expire 30 jours après sa création** (14 jours de grâce avant suppression), 1 Go, **sans sauvegarde**.
-  Pour un vrai club : plan payant (sauvegardes incluses) ou une autre base PostgreSQL gratuite (ex. Neon) : il suffit de remplacer `DATABASE_URL`.
-- Sauvegarde manuelle (PostgreSQL) : `DATABASE_URL=<External URL> python scripts/backup_db.py` (nécessite `pg_dump`).
-  Restauration : `python scripts/restore_db.py fichier.dump`. Le fichier contient des données personnelles de mineurs : ne le partagez pas.
-- Export rapide : admin → Préinscriptions → CSV.
-- Les images (logo, activités) sont stockées **dans PostgreSQL** (le disque Render est effacé à chaque redémarrage).
-- Les plans et limites changent : vérifiez les pages officielles avant de choisir (liens dans le README).
+- **Supabase gratuit** : 500 Mo par projet, **projet mis en pause après 1 semaine d'inactivité** (le site cesserait de répondre
+  jusqu'à ce que vous le relanciez depuis le tableau de bord), **aucune sauvegarde automatique**. Les visites du site comptent comme activité
+  tant que quelqu'un l'ouvre ; en période creuse, prévoyez le ping de l'étape 6 (il touche la base via `/healthz`) ou le plan payant.
+- Sauvegarde manuelle : `DATABASE_URL=<adresse> python scripts/backup_db.py` (nécessite `pg_dump`, `sudo apt install postgresql-client`).
+  Pour `pg_dump`, utilisez de préférence la connexion Session pooler. Restauration : `python scripts/restore_db.py fichier.dump`.
+  Le fichier contient des données personnelles de mineurs : ne le partagez pas, ne le mettez pas sur GitHub.
+- Export rapide : admin → Préinscriptions → CSV (à faire régulièrement).
+- Les images (logo, activités) sont stockées **dans la base** (le disque Render est effacé à chaque redémarrage).
+- Les plans et limites changent : vérifiez les pages officielles avant de choisir.
 
 ## Dépannage
 | Symptôme | Piste |
 |---|---|
-| 500 immédiat | Render → Logs. `psycopg` absent ⇒ vérifiez `requirements-prod.txt` ; `DATABASE_URL` manquante en production sur Render ⇒ l'app refuse volontairement SQLite. |
+| 500 immédiat | Render → Logs. `psycopg` absent ⇒ vérifiez `requirements-prod.txt` ; `DATABASE_URL` manquante en production sur Render ⇒ l'app refuse volontairement SQLite. Erreur de connexion Supabase ⇒ mot de passe mal copié/encodé, ou adresse « directe » (IPv6) au lieu de « Session pooler ». |
 | « Formulaire expiré » / connexion admin impossible via Netlify | Cookies non transmis : Plan B. |
 | 403 partout | `PROXY_SHARED_SECRET` défini sans que Netlify envoie l'en-tête : rebuild avec `--secret` ou videz la variable. |
 | Première page très lente / 504 | Réveil de Render (étape 6). |

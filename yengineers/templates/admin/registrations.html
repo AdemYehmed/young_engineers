@@ -11,7 +11,7 @@
     <input id="q" name="q" type="search" value="{{ f.get('q', '') }}" placeholder="Nom, email, téléphone, référence" maxlength="100"></div>
   <div><label for="age">Âge</label>
     <select id="age" name="age"><option value="">Tous</option>
-      {% for a in range(13, 19) %}<option value="{{ a }}" {{ 'selected' if f.get('age') == a|string }}>{{ a }} ans</option>{% endfor %}
+      {% for a in range(7, 19) %}<option value="{{ a }}" {{ 'selected' if f.get('age') == a|string }}>{{ a }} ans</option>{% endfor %}
     </select></div>
   <div><label for="interest">Centre d'intérêt</label>
     <select id="interest" name="interest"><option value="">Tous</option>

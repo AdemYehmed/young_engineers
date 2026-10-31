@@ -1,0 +1,23 @@
+{% extends 'admin/base.html' %}
+{% block title %}Séance{% endblock %}
+{% block content %}
+{% set d = v if v else (dict(row) if row else {}) %}
+<div class="panel-head"><h1>{{ 'Modifier la' if row else 'Nouvelle' }} séance</h1>
+  <a href="{{ url_for('admin.sessions_list') }}">← Retour</a></div>
+<form class="panel form-grid" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div><label for="group_id">Groupe</label><select id="group_id" name="group_id" required>
+    {% for g in groups %}<option value="{{ g['id'] }}" {{ 'selected' if d.get('group_id')|string == g['id']|string }}>{{ g['name'] }}</option>{% endfor %}</select></div>
+  <div><label for="session_date">Date</label><input id="session_date" name="session_date" type="date" required value="{{ d.get('session_date', '') }}"></div>
+  <div><label for="start_time">Début</label><input id="start_time" name="start_time" type="time" value="{{ d.get('start_time', '') }}"></div>
+  <div><label for="end_time">Fin</label><input id="end_time" name="end_time" type="time" value="{{ d.get('end_time', '') }}"></div>
+  <div class="wide muted small">Début et fin vides : les horaires par défaut du groupe sont utilisés (12–18 ans : 09:00–12:00).</div>
+  <div><label for="title">Titre</label><input id="title" name="title" maxlength="120" value="{{ d.get('title', '') }}"></div>
+  <div><label for="location">Lieu</label><input id="location" name="location" maxlength="200" value="{{ d.get('location', '') }}"></div>
+  <div><label for="status">Statut</label><select id="status" name="status">
+    {% for k in SESSION_STATUSES %}<option value="{{ k }}" {{ 'selected' if (d.get('status') or 'planned') == k }}>{{ SESSION_LABELS[k] }}</option>{% endfor %}</select></div>
+  {% if not row %}<div><label for="repeat_until">Répéter chaque semaine jusqu'au</label><input id="repeat_until" name="repeat_until" type="date" value="{{ d.get('repeat_until', '') }}"></div>{% endif %}
+  <div class="wide"><label for="comment">Commentaire</label><textarea id="comment" name="comment" rows="3" maxlength="4000">{{ d.get('comment', '') }}</textarea></div>
+  <div class="wide actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+</form>
+{% endblock %}

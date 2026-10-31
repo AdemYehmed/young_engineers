@@ -9,7 +9,7 @@ from ..db import IntegrityErrors
 INTERESTS = ("robotics", "programming", "electronics", "projects")
 LEVELS = ("beginner", "intermediate", "advanced")
 LANG_CHOICES = ("ar", "fr", "en")
-STATUSES = ("new", "contacted", "waiting", "archived")
+STATUSES = ("new", "contacted", "waiting", "confirmed", "archived")
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-']+@[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?)+$")
 PHONE_RE = re.compile(r"^\+?[0-9][0-9 .\-()]{6,24}$")
@@ -45,7 +45,7 @@ def validate(form, *, require_consent=True):
     raw_age = clean_text(form.get("age"))
     try:
         age = int(raw_age)
-        if not 13 <= age <= 18:
+        if not 7 <= age <= 18:
             raise ValueError
         data["age"] = age
     except ValueError:
@@ -183,7 +183,7 @@ def build_filters(args, offset_hours=1):
         )
         params += [like] * 5
     age = clean_text(args.get("age"))
-    if age.isdigit() and 13 <= int(age) <= 18:
+    if age.isdigit() and 7 <= int(age) <= 18:
         where.append("r.age = ?")
         params.append(int(age))
     interest = clean_text(args.get("interest"))
@@ -236,7 +236,7 @@ def dashboard_stats(db):
     by_status = {s: 0 for s in STATUSES}
     for r in db.execute("SELECT status, COUNT(*) AS n FROM registrations GROUP BY status"):
         by_status[r["status"]] = r["n"]
-    by_age = {a: 0 for a in range(13, 19)}
+    by_age = {a: 0 for a in range(7, 19)}
     for r in db.execute("SELECT age, COUNT(*) AS n FROM registrations GROUP BY age"):
         by_age[r["age"]] = r["n"]
     by_interest = {i: 0 for i in INTERESTS}

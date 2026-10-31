@@ -1,0 +1,8 @@
+<div><label for="title">Titre</label><input id="title" name="title" maxlength="150" value="{{ d.get('title', '') }}"></div>
+<div><label for="session_id">Séance liée</label><select id="session_id" name="session_id"><option value="">—</option>
+  {% for s in sessions %}<option value="{{ s['id'] }}" {{ 'selected' if d.get('session_id')|string == s['id']|string }}>{{ s['session_date'] }} · {{ s['group_name'] }}</option>{% endfor %}</select></div>
+<div class="wide"><label for="caption">Légende</label><textarea id="caption" name="caption" rows="2" maxlength="1000">{{ d.get('caption', '') }}</textarea></div>
+<fieldset class="wide"><legend>Publication sur le site</legend>
+  <label class="inline"><input type="checkbox" name="is_public" value="1" {{ 'checked' if d.get('is_public') }}> Afficher dans la galerie publique</label>
+  <label class="inline"><input type="checkbox" name="consent_confirmed" value="1" {{ 'checked' if d.get('consent_confirmed') }}> Les parents ont donné leur accord pour la publication (obligatoire pour publier)</label>
+</fieldset>

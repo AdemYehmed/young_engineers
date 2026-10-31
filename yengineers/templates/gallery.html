@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}{{ t('gallery.title') }} — {{ setting('club_name') }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="h2">{{ t('gallery.title') }}</h1>
+    <p class="muted">{{ t('gallery.intro') }}</p>
+    {% if items %}
+    <ul class="gallery-grid">
+      {% for it in items %}
+      <li class="gallery-item">
+        {% if it['kind'] == 'video' %}
+        <video controls preload="metadata" playsinline src="{{ file_url(it['filename'], absolute=True) }}">{{ t('gallery.video_fallback') }}</video>
+        {% else %}
+        <a href="{{ file_url(it['filename'], absolute=True) }}" target="_blank" rel="noopener">
+          <img src="{{ file_url(it['filename'], absolute=True) }}" alt="{{ it['title'] or it['caption'] or '' }}" loading="lazy">
+        </a>
+        {% endif %}
+        {% if it['title'] or it['caption'] %}
+        <div class="gallery-caption">
+          {% if it['title'] %}<strong>{{ it['title'] }}</strong>{% endif %}
+          {% if it['caption'] %}<p>{{ it['caption'] }}</p>{% endif %}
+        </div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% if pages > 1 %}
+    <nav class="gallery-pager" aria-label="Pagination">
+      {% if page > 1 %}<a class="btn btn-sm" href="{{ url_for('public.gallery', page=page - 1) }}">{{ t('gallery.newer') }}</a>{% endif %}
+      <span>{{ page }} / {{ pages }}</span>
+      {% if page < pages %}<a class="btn btn-sm" href="{{ url_for('public.gallery', page=page + 1) }}">{{ t('gallery.older') }}</a>{% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <p>{{ t('gallery.empty') }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

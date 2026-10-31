@@ -16,6 +16,11 @@
   <nav class="topnav" aria-label="Navigation d'administration">
     <a href="{{ url_for('admin.dashboard') }}" {% if request.endpoint == 'admin.dashboard' %}aria-current="page"{% endif %}>Tableau de bord</a>
     <a href="{{ url_for('admin.registrations_list') }}" {% if request.endpoint and request.endpoint.startswith('admin.registration') %}aria-current="page"{% endif %}>Préinscriptions</a>
+    <a href="{{ url_for('admin.members_list') }}" {% if request.endpoint and (request.endpoint.startswith('admin.member') or request.endpoint.startswith('admin.group')) %}aria-current="page"{% endif %}>Membres</a>
+    <a href="{{ url_for('admin.sessions_list') }}" {% if request.endpoint and request.endpoint.startswith('admin.session') %}aria-current="page"{% endif %}>Séances</a>
+    <a href="{{ url_for('admin.calendar') }}" {% if request.endpoint == 'admin.calendar' %}aria-current="page"{% endif %}>Calendrier</a>
+    <a href="{{ url_for('admin.payments_page') }}" {% if request.endpoint and request.endpoint.startswith('admin.payment') %}aria-current="page"{% endif %}>Paiements</a>
+    <a href="{{ url_for('admin.gallery_list') }}" {% if request.endpoint and request.endpoint.startswith('admin.gallery') %}aria-current="page"{% endif %}>Galerie</a>
     <a href="{{ url_for('admin.activities_list') }}" {% if request.endpoint and request.endpoint.startswith('admin.activit') %}aria-current="page"{% endif %}>Activités</a>
     <a href="{{ url_for('admin.faqs_list') }}" {% if request.endpoint and request.endpoint.startswith('admin.faq') %}aria-current="page"{% endif %}>FAQ</a>
     <a href="{{ url_for('admin.settings_page') }}" {% if request.endpoint == 'admin.settings_page' %}aria-current="page"{% endif %}>Contenu du site</a>

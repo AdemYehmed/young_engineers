@@ -1,0 +1,16 @@
+{% extends 'admin/base.html' %}
+{% block title %}Galerie{% endblock %}
+{% block content %}
+<div class="panel-head"><h1>Galerie photos et vidéos</h1>
+  <a class="btn btn-primary" href="{{ url_for('admin.gallery_upload') }}">+ Ajouter</a></div>
+<p class="muted small">Fichiers stockés sur le disque du serveur (pas dans la base). Max {{ max_photo }} Mo par photo, {{ max_video }} Mo par vidéo.
+{% if free is not none %}Espace libre : {{ (free / 1073741824)|round(1) }} Go.{% endif %}</p>
+{% if items %}<div class="gal-grid">{% for it in items %}<div class="gal-card">
+  {% if it['kind'] == 'photo' %}<img src="{{ file_url(it['filename']) }}" alt="{{ it['title'] or '' }}" loading="lazy">
+  {% else %}<video src="{{ file_url(it['filename']) }}" controls preload="none"></video>{% endif %}
+  <div class="body"><strong>{{ it['title'] or it['original_name'] }}</strong><br>
+    <span class="tag {{ 'tag-confirmed' if it['is_public'] else 'tag-archived' }}">{{ 'Public' if it['is_public'] else 'Privé' }}</span>
+    {{ (it['size_bytes'] / 1048576)|round(1) }} Mo{% if it['session_date'] %} · séance {{ it['session_date'] }}{% endif %}<br>
+    <a href="{{ url_for('admin.gallery_edit', item_id=it['id']) }}">Modifier</a> · <a href="{{ url_for('admin.gallery_delete', item_id=it['id']) }}">Supprimer</a></div></div>{% endfor %}</div>
+{% else %}<p class="muted">Aucun média pour le moment.</p>{% endif %}
+{% endblock %}

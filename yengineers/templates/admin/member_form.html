@@ -1,0 +1,25 @@
+{% extends 'admin/base.html' %}
+{% block title %}Membre{% endblock %}
+{% block content %}
+{% set d = v if v else (dict(row) if row else {}) %}
+<div class="panel-head"><h1>{{ 'Modifier' if row else 'Nouveau' }} membre</h1>
+  <a href="{{ url_for('admin.members_list') }}">← Retour</a></div>
+<form class="panel form-grid" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div><label for="first_name">Prénom</label><input id="first_name" name="first_name" required maxlength="60" value="{{ d.get('first_name', '') }}"></div>
+  <div><label for="last_name">Nom</label><input id="last_name" name="last_name" maxlength="60" value="{{ d.get('last_name', '') }}"></div>
+  <div><label for="age">Âge</label><input id="age" name="age" type="number" min="3" max="30" required value="{{ d.get('age', '') }}"></div>
+  <div><label for="group_id">Groupe</label><select id="group_id" name="group_id"><option value="">(selon l'âge)</option>
+    {% for g in groups %}<option value="{{ g['id'] }}" {{ 'selected' if d.get('group_id')|string == g['id']|string }}>{{ g['name'] }}</option>{% endfor %}</select></div>
+  <div><label for="status">Statut</label><select id="status" name="status">
+    {% for k in MEMBER_STATUSES %}<option value="{{ k }}" {{ 'selected' if (d.get('status') or 'active') == k }}>{{ MEMBER_LABELS[k] }}</option>{% endfor %}</select></div>
+  <div><label for="joined_on">Date d'inscription</label><input id="joined_on" name="joined_on" type="date" value="{{ d.get('joined_on', '') or '' }}"></div>
+  <div><label for="parent_name">Parent ou tuteur</label><input id="parent_name" name="parent_name" maxlength="100" value="{{ d.get('parent_name', '') }}"></div>
+  <div><label for="phone">Téléphone</label><input id="phone" name="phone" dir="ltr" maxlength="30" value="{{ d.get('phone', '') }}"></div>
+  <div><label for="email">Email</label><input id="email" name="email" type="email" dir="ltr" maxlength="254" value="{{ d.get('email', '') }}"></div>
+  <div><label for="fee_override">Tarif particulier (DT, vide = tarif du groupe)</label>
+    <input id="fee_override" name="fee_override" inputmode="decimal" value="{{ v.get('fee_override') if v else ((d.get('fee_override_millimes')|money) if d.get('fee_override_millimes') is not none else '') }}"></div>
+  <div class="wide"><label for="notes">Notes</label><textarea id="notes" name="notes" rows="3" maxlength="2000">{{ d.get('notes', '') }}</textarea></div>
+  <div class="wide actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+</form>
+{% endblock %}

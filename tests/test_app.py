@@ -239,7 +239,7 @@ class TestRegistration(Base):
         self.assertEqual(len(refs), 2)
 
     def test_validation_errors_server_side(self):
-        cases = {"age": "12", "age2": "19", "email": "pas-un-email", "phone": "abc",
+        cases = {"age": "6", "age2": "19", "email": "pas-un-email", "phone": "abc",
                  "parent_name": "", "youth_first_name": "A", "preferred_language": "de",
                  "experience_level": "expert"}
         for field, value in cases.items():
@@ -256,10 +256,10 @@ class TestRegistration(Base):
 
     def test_validation_messages_follow_language_and_keep_values(self):
         self.client.get("/lang/fr")
-        r = self.register(age="12", parent_name="Parent Test")
+        r = self.register(age="6", parent_name="Parent Test")
         import html as htmllib
         html = htmllib.unescape(r.get_data(as_text=True))
-        self.assertIn("L'âge doit être un nombre entre 13 et 18.", html)
+        self.assertIn("L'âge doit être un nombre entre 7 et 18.", html)
         self.assertIn("Parent Test", html)
 
     def test_unknown_interest_values_are_ignored(self):
@@ -790,3 +790,133 @@ class TestDeployFeatures(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClubManagement(unittest.TestCase):
+    """Gestion du club : confirmation, séances, présences, paiements, galerie."""
+
+    def setUp(self):
+        import tempfile
+        from yengineers import create_app
+        self.tmp = tempfile.mkdtemp()
+        self.app = create_app({"TESTING": True, "DATABASE": os.path.join(self.tmp, "t.db"),
+                               "INSTANCE_DIR": self.tmp, "SECRET_KEY": "k" * 40,
+                               "MEDIA_DIR": os.path.join(self.tmp, "media"),
+                               "UPLOAD_DIR": os.path.join(self.tmp, "up")})
+        self.client = self.app.test_client()
+        from werkzeug.security import generate_password_hash
+        with self.app.app_context():
+            from yengineers.db import get_db
+            db = get_db()
+            with db:
+                db.execute("INSERT INTO admins(username, password_hash) VALUES (?,?)",
+                           ("boss", generate_password_hash("Correct-Horse-9")))
+        self.login()
+
+    def csrf(self, path="/admin/login"):
+        import re
+        html = self.client.get(path).get_data(as_text=True)
+        return re.search(r'name="csrf_token" value="([^"]+)"', html).group(1)
+
+    def login(self):
+        self.client.post("/admin/login", data={"username": "boss", "password": "Correct-Horse-9",
+                                                "csrf_token": self.csrf()})
+
+    def post(self, path, page=None, **data):
+        data["csrf_token"] = self.csrf(page or path)
+        return self.client.post(path, data=data)
+
+    def q(self, sql, params=()):
+        with self.app.app_context():
+            from yengineers.db import get_db
+            return [dict(r) for r in get_db().execute(sql, params).fetchall()]
+
+    def test_pages_render(self):
+        for path in ("/admin/", "/admin/members", "/admin/groups", "/admin/groups/new", "/admin/members/new",
+                     "/admin/sessions", "/admin/sessions/new", "/admin/calendar", "/admin/payments",
+                     "/admin/payments/new", "/admin/gallery", "/admin/gallery/upload"):
+            self.assertEqual(self.client.get(path).status_code, 200, path)
+
+    def test_requires_login(self):
+        anon = self.app.test_client()
+        for path in ("/admin/members", "/admin/gallery", "/admin/payments", "/admin/calendar"):
+            self.assertEqual(anon.get(path).status_code, 302, path)
+
+    def test_default_groups_and_confirmation(self):
+        groups = {g["name"]: g for g in self.q("SELECT * FROM club_groups")}
+        self.assertEqual(len(groups), 2)
+        with self.app.app_context():
+            from yengineers.db import get_db
+            db = get_db()
+            with db:
+                rid = db.insert("INSERT INTO registrations(reference, parent_name, youth_first_name, age, phone, "
+                                "email, preferred_language, experience_level, consent, dedupe_hash, consent_at) VALUES "
+                                "('YE-T1','Parent','Sami',9,'+21612345678','a@b.tn','fr','beginner',1,'h-t1',datetime('now'))")
+        r = self.post(f"/admin/registrations/{rid}/confirm", page=f"/admin/registrations/{rid}")
+        self.assertEqual(r.status_code, 302)
+        self.post(f"/admin/registrations/{rid}/confirm", page=f"/admin/registrations/{rid}")  # idempotent
+        members = self.q("SELECT m.*, g.age_min FROM members m JOIN club_groups g ON g.id = m.group_id")
+        self.assertEqual(len(members), 1)
+        self.assertEqual(members[0]["age_min"], 7)
+        self.assertEqual(self.q("SELECT status FROM registrations")[0]["status"], "confirmed")
+
+    def test_session_attendance_payment_flow(self):
+        r = self.post("/admin/members/new", first_name="Lina", last_name="B", age="14", status="active")
+        self.assertEqual(r.status_code, 302)
+        member = self.q("SELECT * FROM members")[0]
+        group = self.q("SELECT * FROM club_groups WHERE age_min = 12")[0]
+        self.assertEqual(member["group_id"], group["id"])
+        r = self.post("/admin/sessions/new", group_id=str(group["id"]), session_date="2026-11-07",
+                      repeat_until="2026-11-21")
+        self.assertEqual(r.status_code, 302)
+        sessions = self.q("SELECT * FROM club_sessions ORDER BY session_date")
+        self.assertEqual([s["session_date"] for s in sessions], ["2026-11-07", "2026-11-14", "2026-11-21"])
+        self.assertEqual((sessions[0]["start_time"], sessions[0]["end_time"]), ("09:00", "12:00"))
+        sid = sessions[0]["id"]
+        self.post(f"/admin/sessions/{sid}/attendance", page=f"/admin/sessions/{sid}",
+                  **{f"status_{member['id']}": "late", "comment": "Très bonne séance", "mark_done": "1"})
+        self.assertEqual(self.q("SELECT status FROM attendance")[0]["status"], "late")
+        sess = self.q("SELECT * FROM club_sessions WHERE id = ?", (sid,))[0]
+        self.assertEqual((sess["status"], sess["comment"]), ("done", "Très bonne séance"))
+        r = self.post("/admin/payments/new", member_id=str(member["id"]), amount="40,500",
+                      paid_on="2026-11-02")
+        self.assertEqual(r.status_code, 302)
+        pay = self.q("SELECT * FROM payments")[0]
+        self.assertEqual((pay["amount_millimes"], pay["period"]), (40500, "2026-11"))
+        self.assertEqual(self.client.get("/admin/payments?month=2026-11").status_code, 200)
+        self.assertEqual(self.client.get("/admin/calendar?month=2026-11").status_code, 200)
+        # un membre avec paiements ne peut pas être supprimé
+        self.post(f"/admin/members/{member['id']}/delete", page=f"/admin/members/{member['id']}/delete",
+                  confirm="yes")
+        self.assertEqual(len(self.q("SELECT * FROM members")), 1)
+        r = self.post("/admin/payments/new", member_id=str(member["id"]), amount="-5")
+        self.assertEqual(r.status_code, 422)
+
+    def test_gallery_upload_consent_and_public_serving(self):
+        import io
+        png = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+        mp4 = b"\x00\x00\x00\x18ftypmp42" + b"0" * 64
+
+        def upload(files, **extra):
+            data = {"csrf_token": self.csrf("/admin/gallery/upload"),
+                    "files": [(io.BytesIO(c), n) for n, c in files], **extra}
+            return self.client.post("/admin/gallery/upload", data=data, content_type="multipart/form-data")
+
+        self.assertEqual(upload([("a.png", png)], is_public="1").status_code, 422)  # sans consentement
+        self.assertEqual(len(self.q("SELECT * FROM media_items")), 0)
+        self.assertEqual(upload([("fake.mp4", b"not a video at all....")]).status_code, 422)
+        self.assertEqual(upload([("a.png", png), ("b.mp4", mp4)], is_public="1",
+                                consent_confirmed="1").status_code, 302)
+        items = self.q("SELECT * FROM media_items ORDER BY id")
+        self.assertEqual([i["kind"] for i in items], ["photo", "video"])
+        anon = self.app.test_client()
+        self.assertEqual(anon.get(f"/files/{items[0]['filename']}").status_code, 200)
+        self.assertIn("/files/", anon.get("/gallery").get_data(as_text=True))
+        # privé : visible seulement pour l'admin
+        self.post(f"/admin/gallery/{items[1]['id']}/edit", page=f"/admin/gallery/{items[1]['id']}/edit", title="x")
+        self.assertEqual(anon.get(f"/files/{items[1]['filename']}").status_code, 404)
+        self.assertEqual(self.client.get(f"/files/{items[1]['filename']}").status_code, 200)
+        self.assertEqual(anon.get("/files/../../etc/passwd").status_code, 404)
+        self.post(f"/admin/gallery/{items[0]['id']}/delete", page=f"/admin/gallery/{items[0]['id']}/delete",
+                  confirm="yes")
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "media", items[0]["filename"])))

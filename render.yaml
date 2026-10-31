@@ -1,5 +1,5 @@
-# Blueprint Render : service web Flask + base PostgreSQL.
-# Aucun secret ici : SECRET_KEY est généré par Render, DATABASE_URL vient de la base.
+# Blueprint Render : service web Flask uniquement (la base PostgreSQL est chez Supabase).
+# Aucun secret ici : SECRET_KEY est généré par Render, DATABASE_URL est saisie dans le tableau de bord.
 services:
   - type: web
     name: young-engineers-api
@@ -14,10 +14,9 @@ services:
         value: production
       - key: SECRET_KEY
         generateValue: true
+      # Base PostgreSQL hébergée chez Supabase : coller l'adresse « Session pooler » dans Render.
       - key: DATABASE_URL
-        fromDatabase:
-          name: young-engineers-db
-          property: connectionString
+        sync: false
       - key: SESSION_COOKIE_SECURE
         value: "true"
       - key: TRUST_PROXY
@@ -27,8 +26,3 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_PASSWORD_HASH
         sync: false
-
-databases:
-  - name: young-engineers-db
-    plan: free                 # expire après 30 jours, sans sauvegarde : voir DEPLOIEMENT.md
-    region: frankfurt

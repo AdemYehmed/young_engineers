@@ -9,6 +9,21 @@
   <div class="stat"><span class="stat-n">{{ stats.by_status['contacted'] }}</span><span>Contactés</span></div>
 </div>
 
+<section class="panel">
+  <div class="panel-head"><h2>Le club</h2><a href="{{ url_for('admin.members_list') }}">Membres →</a></div>
+  <div class="stat-grid">
+    <div class="stat"><span class="stat-n">{{ club.active }}</span><span>Membres actifs</span></div>
+    {% for g in club.by_group %}<div class="stat"><span class="stat-n">{{ g['n'] }}</span><span>{{ g['name'] }}</span></div>{% endfor %}
+    <div class="stat"><span class="stat-n">{{ club.paid_month|money }}</span><span>DT encaissés ce mois</span></div>
+    <div class="stat"><span class="stat-n">{{ club.pending_registrations }}</span><span>Préinscriptions à confirmer</span></div>
+  </div>
+  <h3>Prochaines séances</h3>
+  {% if club.upcoming %}
+  <ul class="plain">{% for s in club.upcoming %}
+    <li><a href="{{ url_for('admin.session_detail', session_id=s['id']) }}">{{ s['session_date'] }}</a> · {{ s['start_time'] }}–{{ s['end_time'] }} · {{ s['group_name'] }}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Aucune séance prévue. <a href="{{ url_for('admin.session_new') }}">Planifier une séance</a></p>{% endif %}
+</section>
+
 <div class="two-col">
   <section class="panel">
     <h2>Répartition par âge</h2>

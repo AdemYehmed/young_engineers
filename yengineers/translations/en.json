@@ -1,6 +1,6 @@
 {
   "meta.title_suffix": "Robotics and technology club in Gabès",
-  "meta.description": "Young Engineers: a robotics, programming and electronics club for young people aged 13 to 18 in Gabès, Tunisia. Pre-register today.",
+  "meta.description": "Young Engineers: a robotics, programming and electronics club for young people aged 7 to 18 in Gabès, Tunisia. Pre-register today.",
   "a11y.skip": "Skip to content",
   "a11y.logo": "Young Engineers logo",
   "nav.home": "Home",
@@ -44,7 +44,7 @@
   "contact.phone": "Phone",
   "contact.location": "City",
   "contact.social": "Social media",
-  "footer.tagline": "Robotics and technology club for ages 13–18.",
+  "footer.tagline": "Robotics and technology club for ages 7–18.",
   "footer.privacy": "Privacy policy",
   "footer.legal": "Legal notice",
   "footer.rights": "All rights reserved.",
@@ -54,7 +54,7 @@
   "form.notice": "You are expressing your interest: this is not a final enrolment. The launch will be announced once the required number of pre-registrations is reached.",
   "form.parent_name": "Parent or guardian name",
   "form.youth_first_name": "Young person's first name",
-  "form.age": "Young person's age (13 to 18)",
+  "form.age": "Young person's age (7 to 18)",
   "form.phone": "Parent's phone number",
   "form.phone_hint": "Example:",
   "form.email": "Parent's email",
@@ -85,7 +85,7 @@
   "err.required": "This field is required.",
   "err.too_short": "Please enter at least {n} characters.",
   "err.too_long": "Please enter no more than {n} characters.",
-  "err.age": "Age must be a number between 13 and 18.",
+  "err.age": "Age must be a number between 7 and 18.",
   "err.phone": "Enter a valid phone number (8 to 15 digits).",
   "err.email": "Enter a valid email address.",
   "err.language": "Choose a language from the list.",
@@ -138,5 +138,12 @@
   "legal.content_title": "Content and ownership",
   "legal.content_text": "Unless stated otherwise, the site's texts, illustrations and logo belong to Young Engineers. Any reproduction requires its consent.",
   "legal.data_title": "Personal data",
-  "legal.data_text": "See the privacy policy."
+  "legal.data_text": "See the privacy policy.",
+  "nav.gallery": "Gallery",
+  "gallery.title": "Photo and video gallery",
+  "gallery.intro": "Some moments from our club sessions.",
+  "gallery.empty": "No photos or videos yet.",
+  "gallery.video_fallback": "Your browser cannot play this video.",
+  "gallery.newer": "Newer",
+  "gallery.older": "Older"
 }

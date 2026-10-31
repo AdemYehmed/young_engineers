@@ -1,0 +1,14 @@
+{% extends 'admin/base.html' %}
+{% block title %}Ajouter des médias{% endblock %}
+{% block content %}
+{% set d = v or {} %}
+<div class="panel-head"><h1>Ajouter photos et vidéos</h1><a href="{{ url_for('admin.gallery_list') }}">← Galerie</a></div>
+<form class="panel form-grid" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="wide"><label for="files">Fichiers (plusieurs possibles)</label>
+    <input id="files" name="files" type="file" multiple required accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm">
+    <p class="muted small">Photos : JPG, PNG, WEBP, GIF (max {{ max_photo }} Mo). Vidéos : MP4, MOV, WEBM (max {{ max_video }} Mo). Le titre et la légende s'appliquent à tous les fichiers envoyés.</p></div>
+  {% include 'admin/_media_fields.html' %}
+  <div class="wide actions"><button class="btn btn-primary" type="submit">Envoyer</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'admin/base.html' %}
+{% block title %}Groupes{% endblock %}
+{% block content %}
+<div class="panel-head"><h1>Groupes</h1>
+  <a class="btn btn-primary" href="{{ url_for('admin.group_new') }}">+ Nouveau groupe</a></div>
+<div class="table-wrap"><table>
+  <thead><tr><th>Nom</th><th>Âges</th><th>Horaire par défaut</th><th>Tarif / mois</th><th>Membres actifs</th><th>État</th><th></th></tr></thead>
+  <tbody>{% for g in rows %}
+  <tr><td>{{ g['name'] }}</td><td>{{ g['age_min'] }}–{{ g['age_max'] }} ans</td>
+    <td>{% if g['default_start'] %}{{ g['default_start'] }}–{{ g['default_end'] }}{% else %}—{% endif %}</td>
+    <td>{% if g['fee_millimes'] %}{{ g['fee_millimes']|money }} DT{% else %}—{% endif %}</td>
+    <td>{{ g['active_members'] }}</td>
+    <td>{{ 'Actif' if g['is_active'] else 'Désactivé' }}</td>
+    <td><a href="{{ url_for('admin.group_edit', group_id=g['id']) }}">Modifier</a> ·
+        <a href="{{ url_for('admin.group_delete', group_id=g['id']) }}">Supprimer</a></td></tr>
+  {% endfor %}</tbody></table></div>
+<p class="muted small">Le tarif sert au suivi des paiements mensuels. Laissez vide si non défini.</p>
+{% endblock %}

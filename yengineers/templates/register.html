@@ -51,7 +51,7 @@
           <label for="f-age">{{ t('form.age') }} <span class="req" aria-hidden="true">*</span></label>
           <select id="f-age" name="age" required {% if errors.get('age') %}aria-invalid="true" aria-describedby="err-age"{% endif %}>
             <option value="" disabled {{ 'selected' if not values.get('age') }}>—</option>
-            {% for a in range(13, 19) %}
+            {% for a in range(7, 19) %}
             <option value="{{ a }}" {{ 'selected' if values.get('age')|string == a|string }}>{{ a }}</option>
             {% endfor %}
           </select>

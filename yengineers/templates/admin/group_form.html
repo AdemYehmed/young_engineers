@@ -1,0 +1,19 @@
+{% extends 'admin/base.html' %}
+{% block title %}Groupe{% endblock %}
+{% block content %}
+{% set d = v if v else (dict(row) if row else {}) %}
+<div class="panel-head"><h1>{{ 'Modifier' if row else 'Nouveau' }} groupe</h1>
+  <a href="{{ url_for('admin.groups_list') }}">← Retour</a></div>
+<form class="panel form-grid" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div><label for="name">Nom</label><input id="name" name="name" required maxlength="80" value="{{ d.get('name', '') }}"></div>
+  <div><label for="age_min">Âge minimum</label><input id="age_min" name="age_min" type="number" min="3" max="30" required value="{{ d.get('age_min', '') }}"></div>
+  <div><label for="age_max">Âge maximum</label><input id="age_max" name="age_max" type="number" min="3" max="30" required value="{{ d.get('age_max', '') }}"></div>
+  <div><label for="default_start">Début (HH:MM)</label><input id="default_start" name="default_start" type="time" required value="{{ d.get('default_start', '') or '09:00' }}"></div>
+  <div><label for="default_end">Fin (HH:MM)</label><input id="default_end" name="default_end" type="time" required value="{{ d.get('default_end', '') or '12:00' }}"></div>
+  <div><label for="fee">Tarif mensuel (DT)</label><input id="fee" name="fee" inputmode="decimal" value="{{ (v.get('fee') if v else ((d.get('fee_millimes') or 0)|money if d.get('fee_millimes') else '')) }}"></div>
+  <div class="wide"><label for="notes">Notes</label><textarea id="notes" name="notes" rows="2" maxlength="1000">{{ d.get('notes', '') }}</textarea></div>
+  <div class="wide"><label class="inline"><input type="checkbox" name="is_active" value="1" {{ 'checked' if (not row and not v) or d.get('is_active') }}> Groupe actif</label></div>
+  <div class="wide actions"><button class="btn btn-primary" type="submit">Enregistrer</button></div>
+</form>
+{% endblock %}

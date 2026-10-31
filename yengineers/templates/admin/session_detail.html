@@ -1,0 +1,35 @@
+{% extends 'admin/base.html' %}
+{% block title %}Séance {{ s['session_date'] }}{% endblock %}
+{% block content %}
+<div class="panel-head"><h1>Séance du {{ s['session_date'] }} <span class="tag tag-{{ s['status'] }}">{{ SESSION_LABELS[s['status']] }}</span></h1>
+  <a href="{{ url_for('admin.sessions_list') }}">← Séances</a></div>
+<section class="panel">
+  <p><strong>{{ s['group_name'] }}</strong> · {{ s['start_time'] }}–{{ s['end_time'] }}{% if s['location'] %} · {{ s['location'] }}{% endif %}{% if s['title'] %} · {{ s['title'] }}{% endif %}</p>
+  <div class="actions"><a class="btn" href="{{ url_for('admin.session_edit', session_id=s['id']) }}">Modifier</a>
+    <a class="btn" href="{{ url_for('admin.gallery_upload', session=s['id']) }}">Ajouter photos/vidéos</a>
+    <a class="btn btn-danger" href="{{ url_for('admin.session_delete', session_id=s['id']) }}">Supprimer…</a></div>
+</section>
+<form class="panel" method="post" action="{{ url_for('admin.session_attendance', session_id=s['id']) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <h2>Présences</h2>
+  {% if roster %}
+  <div class="table-wrap"><table class="att-table"><thead><tr><th>Membre</th><th>Présence</th><th>Note</th></tr></thead><tbody>
+  {% for m in roster %}<tr>
+    <td><a href="{{ url_for('admin.member_detail', member_id=m['id']) }}">{{ m['first_name'] }} {{ m['last_name'] }}</a></td>
+    <td><select name="status_{{ m['id'] }}" aria-label="Présence de {{ m['first_name'] }}"><option value="">—</option>
+      {% for k in ATTENDANCE_STATUSES %}<option value="{{ k }}" {{ 'selected' if m['att_status'] == k }}>{{ ATTENDANCE_LABELS[k] }}</option>{% endfor %}</select></td>
+    <td><input type="text" name="note_{{ m['id'] }}" maxlength="300" value="{{ m['att_note'] or '' }}" aria-label="Note"></td></tr>{% endfor %}
+  </tbody></table></div>
+  <label class="inline"><input type="checkbox" name="mark_all" value="present"> Marquer « présent » ceux sans choix</label>
+  {% if s['status'] == 'planned' %}<label class="inline"><input type="checkbox" name="mark_done" value="1"> Marquer la séance comme terminée</label>{% endif %}
+  {% else %}<p class="muted">Aucun membre actif dans ce groupe. <a href="{{ url_for('admin.member_new') }}">Ajouter un membre</a></p>{% endif %}
+  <div><label for="comment">Commentaire de séance</label>
+    <textarea id="comment" name="comment" rows="4" maxlength="4000">{{ s['comment'] or '' }}</textarea></div>
+  <div class="actions"><button class="btn btn-primary" type="submit">Enregistrer présences et commentaire</button></div>
+</form>
+{% if media %}<section class="panel"><h2>Photos et vidéos</h2><div class="gal-grid">
+  {% for it in media %}<div class="gal-card">
+    {% if it['kind'] == 'photo' %}<img src="{{ file_url(it['filename']) }}" alt="{{ it['title'] or '' }}" loading="lazy">
+    {% else %}<video src="{{ file_url(it['filename']) }}" controls preload="none"></video>{% endif %}
+    <div class="body">{{ it['title'] or it['original_name'] }}</div></div>{% endfor %}</div></section>{% endif %}
+{% endblock %}

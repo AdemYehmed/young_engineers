@@ -14,6 +14,19 @@
   <ul>{% for name, err in errors.items() %}<li>{{ errmsg(err) }}</li>{% endfor %}</ul></div>
 {% endif %}
 
+<div class="panel actions">
+  {% if member %}
+  <span class="tag tag-confirmed">Confirmée</span>
+  <a class="btn btn-primary" href="{{ url_for('admin.member_detail', member_id=member['id']) }}">Voir la fiche du membre →</a>
+  {% else %}
+  <form method="post" action="{{ url_for('admin.registration_confirm', reg_id=r['id']) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit">✔ Confirmer et créer le membre</button>
+  </form>
+  <span class="muted small">Le jeune est ajouté au groupe correspondant à son âge.</span>
+  {% endif %}
+</div>
+
 <form class="panel form-grid" method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div><label for="parent_name">Parent ou tuteur</label>
@@ -21,7 +34,7 @@
   <div><label for="youth_first_name">Prénom du jeune</label>
     <input id="youth_first_name" name="youth_first_name" required maxlength="60" value="{{ v.get('youth_first_name', r['youth_first_name']) }}"></div>
   <div><label for="age">Âge</label>
-    <select id="age" name="age">{% for a in range(13, 19) %}
+    <select id="age" name="age">{% for a in range(7, 19) %}
       <option value="{{ a }}" {{ 'selected' if (v.get('age', r['age']))|string == a|string }}>{{ a }}</option>{% endfor %}</select></div>
   <div><label for="phone">Téléphone</label>
     <input id="phone" name="phone" required dir="ltr" maxlength="30" value="{{ v.get('phone', r['phone']) }}"></div>
